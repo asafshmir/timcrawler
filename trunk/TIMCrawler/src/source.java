@@ -1,0 +1,3 @@
+class source {
+	// empty
+}
