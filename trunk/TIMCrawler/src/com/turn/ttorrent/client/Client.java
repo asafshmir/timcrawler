@@ -101,9 +101,10 @@ public class Client extends Observable implements Runnable,
 		SEEDING,
 		ERROR,
 		DONE;
+		// TODO add impersonate state
 	};
 
-	private static final String BITTORRENT_ID_PREFIX = "-TO0042-";
+	private static final String BITTORRENT_ID_PREFIX = "-TO0042-";//TODO change to our unique ID
 
 	private SharedTorrent torrent;
 	private ClientState state;
@@ -431,7 +432,7 @@ public class Client extends Observable implements Runnable,
 			if (peer != null) {
 				return peer;
 			}
-
+			
 			if (search.hasPeerId()) {
 				peer = this.peers.get(search.getHostIdentifier());
 				if (peer != null) {
@@ -577,11 +578,12 @@ public class Client extends Observable implements Runnable,
 				return;
 			}
 
-			try {
+			try { 
 				List<BEValue> peers = answer.get("peers").getList();
 				logger.debug("Got tracker response with {} peer(s).",
 					peers.size());
 				for (BEValue peerInfo : peers) {
+					// TODO upsert 'tracker record' (session=0) for each peer
 					Map<String, BEValue> info = peerInfo.getMap();
 
 					try {
@@ -649,6 +651,7 @@ public class Client extends Observable implements Runnable,
 			//	   of connecting to peers that need to download
 			//     something), or we are a seeder but we're still
 			//     willing to initiate some outbound connections.
+			// TODO define behavior on IMPERSONATE state
 			if (!peer.isBound() &&
 				(!this.isSeed() ||
 				 this.connected.size() < Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
