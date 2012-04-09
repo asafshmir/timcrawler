@@ -182,6 +182,9 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		this.interval = 5;
 		this.initial = true;
 
+		// TODO try to connect twice at the beginning (some trackers send only 1 peer to 'test' you)
+		// TODO define the announce interval by ourself - ignore the tracker's interval parameter
+		
 		while (!this.stop) {
 			this.announce(this.initial ?
 					AnnounceEvent.STARTED :
@@ -191,7 +194,8 @@ public class Announce implements Runnable, AnnounceResponseListener {
 				logger.trace("Sending next announce in " + this.interval +
 					   	" seconds.");
 				
-				Thread.sleep(this.interval * 1000);
+				// TODO change this Thread.sleep(this.interval * 1000);
+				Thread.sleep(15 * 1000);
 			} catch (InterruptedException ie) {
 				// Ignore
 			}
@@ -263,9 +267,10 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		params.put("peer_id", this.id);
 		params.put("port", Integer.valueOf(this.address.getPort()).toString());
 		params.put("uploaded", Long.valueOf(this.torrent.getUploaded()).toString());
+		// TODO impersonate as a seeder - downloaded=<file size> uploaded=? (TC gave random number> left=0  
 		params.put("downloaded", Long.valueOf(this.torrent.getDownloaded()).toString());
 		params.put("left", Long.valueOf(this.torrent.getLeft()).toString());
-
+		// TODO consider not sending event parameter - TC didn't send it
 		if (!AnnounceEvent.NONE.equals(event)) {
 			params.put("event", event.name().toLowerCase());
 		}
