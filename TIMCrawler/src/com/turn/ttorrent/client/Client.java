@@ -15,13 +15,6 @@
 
 package com.turn.ttorrent.client;
 
-import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.InvalidBEncodingException;
-import com.turn.ttorrent.client.peer.PeerActivityListener;
-import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
-import com.turn.ttorrent.client.peer.SharingPeer;
-
 import java.io.File;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -47,11 +40,16 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.BasicConfigurator;
-import org.apache.log4j.ConsoleAppender;
-import org.apache.log4j.PatternLayout;
+import org.apache.log4j.xml.DOMConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import com.turn.ttorrent.bcodec.BEValue;
+import com.turn.ttorrent.bcodec.InvalidBEncodingException;
+import com.turn.ttorrent.client.peer.PeerActivityListener;
+import com.turn.ttorrent.client.peer.SharingPeer;
+import com.turn.ttorrent.common.Peer;
+import com.turn.ttorrent.common.Torrent;
 
 /** A pure-java BitTorrent client.
  *
@@ -792,8 +790,30 @@ public class Client extends Observable implements Runnable,
 					this.connected.size(),
 					this.peers.size()
 				});
-		}
+			
+			
+			// TODO reconnect to peer with different ID
+			int maxTries = 5;
+			int i = 0;
+			for (i = 0; i < maxTries; i++) {
+				logger.debug("Trying to reconnect with {}. Attemp number [{}/{}].", 
+						new Object[] {peer, i+1, maxTries});
+				if (this.service.connect(peer))
+					break;
+			}
 
+			String peerIdStr = peer.hasPeerId() ?
+					(new String(peer.getPeerId().array())).substring(0, 8)
+					: peer.getHostIdentifier();
+					
+			if (i < maxTries) {
+				logger.info("Reconnect with {} is successful after {} tries. Peer ID: {}",
+						new Object[] {peer, i+1, peerIdStr});
+			} else {
+				logger.warn("Reconnect with {} is unsuccessful after {} tries. Peer ID: {}",
+						new Object[] {peer, maxTries, peerIdStr});
+			}
+		}
 		peer.reset();
 	}
 
@@ -876,8 +896,7 @@ public class Client extends Observable implements Runnable,
 	/** Main client entry point for standalone operation.
 	 */
 	public static void main(String[] args) {
-		BasicConfigurator.configure(new ConsoleAppender(
-			new PatternLayout("%d [%-25t] %-5p: %m%n")));
+		DOMConfigurator.configure("config/log4j.xml");
 
 		if (args.length < 1) {
 			System.err.println("usage: Client <torrent> [directory]");
