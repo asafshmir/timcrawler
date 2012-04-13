@@ -460,7 +460,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 				synchronized (this.availablePieces) {
 					this.availablePieces = bitfield.getBitfield();
-					logger.trace("Recorded bitfield from {} with {} " +
+					logger.info("Recorded bitfield from {} with {} " +
 						"pieces(s) [{}/{}].",
 						new Object[] {
 							this,
