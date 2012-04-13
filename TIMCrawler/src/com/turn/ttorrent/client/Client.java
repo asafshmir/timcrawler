@@ -99,8 +99,9 @@ public class Client extends Observable implements Runnable,
 		SEEDING,
 		ERROR,
 		DONE;
-		// TODO add impersonate state
 	};
+	
+	// TODO add modes
 
 	private static final String BITTORRENT_ID_PREFIX = "-TO0042-";//TODO change to our unique ID
 
@@ -649,7 +650,6 @@ public class Client extends Observable implements Runnable,
 			//	   of connecting to peers that need to download
 			//     something), or we are a seeder but we're still
 			//     willing to initiate some outbound connections.
-			// TODO define behavior on IMPERSONATE state
 			if (!peer.isBound() &&
 				(!this.isSeed() ||
 				 this.connected.size() < Client.VOLUNTARY_OUTBOUND_CONNECTIONS)) {
@@ -791,27 +791,28 @@ public class Client extends Observable implements Runnable,
 					this.peers.size()
 				});
 			
-			
-			// TODO reconnect to peer with different ID
-			int maxTries = 5;
-			int i = 0;
-			for (i = 0; i < maxTries; i++) {
-				logger.debug("Trying to reconnect with {}. Attemp number [{}/{}].", 
-						new Object[] {peer, i+1, maxTries});
-				if (this.service.connect(peer))
-					break;
-			}
-
-			String peerIdStr = peer.hasPeerId() ?
-					(new String(peer.getPeerId().array())).substring(0, 8)
-					: peer.getHostIdentifier();
-					
-			if (i < maxTries) {
-				logger.info("Reconnect with {} is successful after {} tries. Peer ID: {}",
-						new Object[] {peer, i+1, peerIdStr});
-			} else {
-				logger.warn("Reconnect with {} is unsuccessful after {} tries. Peer ID: {}",
-						new Object[] {peer, maxTries, peerIdStr});
+			if (!peer.isSeed()) {
+				// TODO reconnect to peer with different ID
+				int maxTries = 5;
+				int i = 0;
+				for (i = 0; i < maxTries; i++) {
+					logger.debug("Trying to reconnect with {}. Attemp number [{}/{}].", 
+							new Object[] {peer, i+1, maxTries});
+					if (this.service.connect(peer))
+						break;
+				}
+	
+				String peerIdStr = peer.hasPeerId() ?
+						(new String(peer.getPeerId().array())).substring(0, 8)
+						: peer.getHostIdentifier();
+						
+				if (i < maxTries) {
+					logger.info("Reconnect with {} is successful after {} tries. Peer ID: {}",
+							new Object[] {peer, i+1, peerIdStr});
+				} else {
+					logger.warn("Reconnect with {} is unsuccessful after {} tries. Peer ID: {}",
+							new Object[] {peer, maxTries, peerIdStr});
+				}
 			}
 		}
 		peer.reset();
