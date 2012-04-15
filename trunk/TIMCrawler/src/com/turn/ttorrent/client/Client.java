@@ -802,9 +802,7 @@ public class Client extends Observable implements Runnable,
 						break;
 				}
 	
-				String peerIdStr = peer.hasPeerId() ?
-						(new String(peer.getPeerId().array())).substring(0, 8)
-						: peer.getHostIdentifier();
+				String peerIdStr = peer.getPeerIdStr().substring(0, 8);
 						
 				if (i < maxTries) {
 					logger.info("Reconnect with {} is successful after {} tries. Peer ID: {}",
