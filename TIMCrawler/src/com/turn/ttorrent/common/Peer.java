@@ -60,6 +60,15 @@ public class Peer {
 	public ByteBuffer getPeerId() {
 		return this.peerId;
 	}
+	
+	/** Returns the string representation of the peer ID.
+	 */
+	public String getPeerIdStr() {
+		String peerIdStr = this.hasPeerId() ?
+				new String(this.getPeerId().array())
+				: this.getHostIdentifier();
+		return peerIdStr;
+	}
 
 	/** Set a peer ID for this peer (usually during handshake).
 	 *
