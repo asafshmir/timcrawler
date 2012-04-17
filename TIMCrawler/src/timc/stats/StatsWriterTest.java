@@ -5,6 +5,8 @@ import java.util.Date;
 
 import org.apache.log4j.xml.DOMConfigurator;
 
+import timc.stats.db.DBStatsWriter;
+
 import com.turn.ttorrent.common.Peer;
 
 public class StatsWriterTest {
@@ -33,14 +35,28 @@ public class StatsWriterTest {
 		try {
 			Thread.sleep(1000);
 		} catch (InterruptedException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		
-		byte[] id = {'-','A','Z','1','0','0','3','-'};
-		Peer peer = new Peer("192.168.0.104", 6882, ByteBuffer.wrap(id));
+		byte[] peerId = {'-','A','Z','1','0','0','3','-'};
+		Peer peer1 = new Peer("192.168.0.111", 6882, ByteBuffer.wrap(peerId));
+		Peer peer2 = new Peer("192.168.0.222", 6885, ByteBuffer.wrap(peerId));
+		Peer peer3 = new Peer("192.168.0.333", 6886, ByteBuffer.wrap(peerId));
+		String infoHash = "just_a_hash";
+		Date lastSeen = new Date();
 		
-		sw.writeSessionStats(peer, start, new Date(), null);
+		
+		Object id = sw.writeTestStats(start, new Date(), infoHash, 1024, 512, 2);
+		
+		try {
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		
+		sw.writeSessionStats(id, peer1, start, lastSeen, null);
+		sw.writeSessionStats(id, peer2, start, lastSeen, null);
+		sw.writeSessionStats(id, peer3, start, lastSeen, null);
 		
 		sw.closeWriter();
 

@@ -7,7 +7,10 @@ import com.turn.ttorrent.common.Peer;
 
 public interface StatsWriter {
 	
-	public void writeSessionStats(Peer peer, Date startTime, Date lastSeen, BitSet initialBitfield);
+	public Object writeTestStats(Date startTime, Date endTime, String infoHash, 
+			int totalSize, int pieceSize, int numPieces);
+	
+	public void writeSessionStats(Object testId, Peer peer, Date startTime, Date lastSeen, BitSet initialBitfield);
 	
 	public boolean initWriter();
 	
