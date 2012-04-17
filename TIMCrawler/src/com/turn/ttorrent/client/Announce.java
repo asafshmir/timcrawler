@@ -36,6 +36,8 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import timc.utils.TIMConfigurator;
+
 /** BitTorrent client tracker announce thread.
  *
  * <p>
@@ -183,7 +185,6 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		this.initial = true;
 
 		// TODO try to connect twice at the beginning (some trackers send only 1 peer to 'test' you)
-		// TODO define the announce interval by ourself - ignore the tracker's interval parameter
 		
 		while (!this.stop) {
 			this.announce(this.initial ?
@@ -194,8 +195,7 @@ public class Announce implements Runnable, AnnounceResponseListener {
 				logger.trace("Sending next announce in " + this.interval +
 					   	" seconds.");
 				
-				// TODO change this Thread.sleep(this.interval * 1000);
-				Thread.sleep(15 * 1000);
+				Thread.sleep(this.interval * 1000);
 			} catch (InterruptedException ie) {
 				// Ignore
 			}
@@ -357,6 +357,8 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		try {
 			if (answer != null && answer.containsKey("interval")) {
 				this.interval = answer.get("interval").getInt();
+				int minInterval = Integer.parseInt(TIMConfigurator.getProperty("min_announce_interval"));
+				this.interval = Math.min(this.interval, minInterval);
 				this.initial = false;
 			}
 		} catch (InvalidBEncodingException ibee) {
