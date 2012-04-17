@@ -28,6 +28,7 @@ import java.text.ParseException;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Observable;
@@ -43,6 +44,8 @@ import java.util.concurrent.ConcurrentMap;
 import org.apache.log4j.xml.DOMConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import timc.utils.TIMConfigurator;
 
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
@@ -118,6 +121,7 @@ public class Client extends Observable implements Runnable,
 	private InetSocketAddress address;
 	private ConnectionHandler service;
 	private Announce announce;
+	private Reconnector reconnector;
 	private ConcurrentMap<String, SharingPeer> peers;
 	private ConcurrentMap<String, SharingPeer> connected;
 
@@ -147,6 +151,11 @@ public class Client extends Observable implements Runnable,
 		// as well.
 		this.announce = new Announce(this.torrent, this.id, this.address);
 		this.announce.register(this);
+		
+		// Initialize the reconnector
+		int retryInterval = Integer.parseInt(TIMConfigurator.getProperty("retry_interval"));
+		int numRetries = Integer.parseInt(TIMConfigurator.getProperty("num_retries"));
+		this.reconnector = this.new Reconnector(retryInterval, numRetries);
 
 		logger.info("BitTorrent client [..{}] for {} started and " +
 			"listening at {}:{}...",
@@ -298,6 +307,7 @@ public class Client extends Observable implements Runnable,
 
 		this.announce.start();
 		this.service.start();
+		this.reconnector.start();
 
 		int optimisticIterations = 0;
 		int rateComputationIterations = 0;
@@ -791,27 +801,8 @@ public class Client extends Observable implements Runnable,
 					this.peers.size()
 				});
 			
-			if (!peer.isSeed()) {
-				// TODO reconnect to peer with different ID
-				int maxTries = 5;
-				int i = 0;
-				for (i = 0; i < maxTries; i++) {
-					logger.debug("Trying to reconnect with {}. Attemp number [{}/{}].", 
-							new Object[] {peer, i+1, maxTries});
-					if (this.service.connect(peer))
-						break;
-				}
-	
-				String peerIdStr = peer.getPeerIdStr().substring(0, 8);
-						
-				if (i < maxTries) {
-					logger.info("Reconnect with {} is successful after {} tries. Peer ID: {}",
-							new Object[] {peer, i+1, peerIdStr});
-				} else {
-					logger.warn("Reconnect with {} is unsuccessful after {} tries. Peer ID: {}",
-							new Object[] {peer, maxTries, peerIdStr});
-				}
-			}
+			if (!peer.isSeed())
+				this.reconnector.followPeer(peer);
 		}
 		peer.reset();
 	}
@@ -890,7 +881,89 @@ public class Client extends Observable implements Runnable,
 			this.client.stop();
 		}
 	};
+	
+	/** A special thread for reconnecting to peers. 
+	 * 
+	 */
+	private class Reconnector implements Runnable {
 
+		private Thread thread;
+		//private Set<SharingPeer> retryPeers;
+		private ConcurrentMap<String, SharingPeer> retryPeers;
+		private int interval; // In seconds
+		private int retries;
+		
+		public Reconnector(int interval, int numRetries) {
+			this.interval = interval;
+			this.retries = numRetries;
+			this.retryPeers = new ConcurrentHashMap<String, SharingPeer>();;
+		}
+		
+		public void start() {
+			if (this.thread == null || !this.thread.isAlive()) {
+				this.thread = new Thread(this);
+				this.thread.setName("bt-reconnector");
+				this.thread.start();
+			}
+		}
+		
+		
+		@Override
+		public void run() {
+			
+			while (!stop) {
+				try {
+					Thread.sleep(this.interval * 1000);
+				} catch (InterruptedException e) {
+					// ignore
+				}
+				retryAllPeers();
+			}
+		}
+		
+		public synchronized void followPeer(SharingPeer peer) {
+			if (immediateReconnect(peer))
+				return;
+			
+			// Reconnect failed, add to retry list
+			retryPeers.put(peer.hasPeerId()
+					? peer.getHexPeerId()
+					: peer.getHostIdentifier(), peer);
+		}
+		
+		
+		private boolean immediateReconnect(SharingPeer peer) {
+			int maxTries = this.retries;
+			int i = 0;
+			for (i = 0; i < maxTries; i++) {
+				logger.debug("Trying to reconnect with {}. Attemp number [{}/{}].", 
+						new Object[] {peer, i+1, maxTries});
+				if (service.connect(peer))
+					break;
+			}
+
+			String peerIdStr = peer.getPeerIdStr().substring(0, 8);
+					
+			if (i < maxTries) {
+				logger.info("Reconnect with {} is successful after {} tries. Peer ID: {}",
+						new Object[] {peer, i+1, peerIdStr});
+				return true;
+			}
+			
+			logger.warn("Reconnect with {} is unsuccessful after {} tries. Peer ID: {}",
+					new Object[] {peer, maxTries, peerIdStr});
+			return false;
+		}
+		
+		private void retryAllPeers() {
+			Iterator<Map.Entry<String, SharingPeer>> it = this.retryPeers.entrySet().iterator();
+			while (it.hasNext()) {
+				if (immediateReconnect(it.next().getValue())) {
+					it.remove();
+				}
+			}
+		}
+	}
 
 	/** Main client entry point for standalone operation.
 	 */
