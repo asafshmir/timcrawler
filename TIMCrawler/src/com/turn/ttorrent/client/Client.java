@@ -45,7 +45,8 @@ import org.apache.log4j.xml.DOMConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import timc.utils.TIMConfigurator;
+import timc.common.TIMConfigurator;
+import timc.common.Utils.OperationMode;
 
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
@@ -126,6 +127,8 @@ public class Client extends Observable implements Runnable,
 	private ConcurrentMap<String, SharingPeer> connected;
 
 	private Random random;
+	
+	private OperationMode m_opMode;
 
 	/** Initialize the BitTorrent client.
 	 *
@@ -156,6 +159,8 @@ public class Client extends Observable implements Runnable,
 		int retryInterval = Integer.parseInt(TIMConfigurator.getProperty("retry_interval"));
 		int numRetries = Integer.parseInt(TIMConfigurator.getProperty("num_retries"));
 		this.reconnector = this.new Reconnector(retryInterval, numRetries);
+		
+		m_opMode = OperationMode.get(Integer.parseInt(TIMConfigurator.getProperty("operation_mode")));
 
 		logger.info("BitTorrent client [..{}] for {} started and " +
 			"listening at {}:{}...",
@@ -169,6 +174,11 @@ public class Client extends Observable implements Runnable,
 		this.peers = new ConcurrentHashMap<String, SharingPeer>();
 		this.connected = new ConcurrentHashMap<String, SharingPeer>();
 		this.random = new Random(System.currentTimeMillis());
+	}
+	
+	public OperationMode getOpMode()
+	{
+		return m_opMode;
 	}
 
 	/** Get this client's peer ID.

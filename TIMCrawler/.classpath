@@ -7,6 +7,6 @@
 	<classpathentry kind="lib" path="lib/simple-4.1.21.jar"/>
 	<classpathentry kind="lib" path="lib/slf4j-api-1.6.4.jar"/>
 	<classpathentry kind="lib" path="lib/slf4j-log4j12-1.6.4.jar"/>
-	<classpathentry kind="lib" path="C:/Users/Asaf/workspace/TIMCrawler/lib/mysql-connector-java-5.1.19-bin.jar"/>
+	<classpathentry kind="lib" path="lib/mysql-connector-java-5.1.19-bin.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
