@@ -36,7 +36,7 @@ import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import timc.utils.TIMConfigurator;
+import timc.common.TIMConfigurator;
 
 /** BitTorrent client tracker announce thread.
  *

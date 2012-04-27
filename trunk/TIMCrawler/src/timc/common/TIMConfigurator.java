@@ -1,4 +1,4 @@
-package timc.utils;
+package timc.common;
 
 import java.io.FileInputStream;
 import java.util.Properties;
