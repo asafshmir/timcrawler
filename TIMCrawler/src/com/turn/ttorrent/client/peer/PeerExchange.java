@@ -36,6 +36,9 @@ import java.util.concurrent.TimeUnit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import timc.common.TIMConfigurator;
+import timc.common.Utils.OperationMode;
+
 /** Incoming and outgoing peer communication system.
  *
  * The peer exchange is a wrapper around peer communication. It provides both
@@ -118,7 +121,18 @@ class PeerExchange {
 			this.peer, this.torrent);
 
 		// If we have pieces, start by sending a BITFIELD message to the peer.
-		BitSet pieces = this.torrent.getCompletedPieces();
+//		BitSet pieces = this.torrent.getCompletedPieces();
+		// *** ADDED BY CHIKO
+		BitSet pieces;
+		if (TIMConfigurator.getOpMode() == OperationMode.NeverSeed) {
+			logger.info("NeverSeed mode: After starting peer exchange with {}, about to send fake bitfield.", this.peer);
+			pieces = this.torrent.getFakeCompletedPieces();
+		}
+		else {
+			pieces = this.torrent.getCompletedPieces();
+		}
+		// *** ADDED BY CHIKO
+		
 		if (pieces.cardinality() > 0) {
 			this.send(Message.BitfieldMessage.craft(pieces));
 		}
