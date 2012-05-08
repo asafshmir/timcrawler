@@ -123,13 +123,19 @@ public class Client extends Observable implements Runnable,
 	private ConnectionHandler service;
 	private Announce announce;
 	private Reconnector reconnector;
+	
+	/** Added when received from tracker, removed if initial connection failed.
+	 * 	Also contains peers which are currently handled by Reconnector, or that we don't want
+	 * 	to connect with them again (i.e seeders). */
 	private ConcurrentMap<String, SharingPeer> peers;
+	/** Added when handshake is completed, removed when IOException occurred 
+	 * on OutgoingThread or IncomingThread */
 	private ConcurrentMap<String, SharingPeer> connected;
 
 	private Random random;
-	
-	private OperationMode m_opMode;
 
+	private OperationMode opMode;
+	
 	/** Initialize the BitTorrent client.
 	 *
 	 * @param address The address to bind to.
@@ -159,9 +165,9 @@ public class Client extends Observable implements Runnable,
 		int retryInterval = Integer.parseInt(TIMConfigurator.getProperty("retry_interval"));
 		int numRetries = Integer.parseInt(TIMConfigurator.getProperty("num_retries"));
 		this.reconnector = this.new Reconnector(retryInterval, numRetries);
-		
-		m_opMode = OperationMode.get(Integer.parseInt(TIMConfigurator.getProperty("operation_mode")));
 
+		opMode = OperationMode.get(Integer.parseInt(TIMConfigurator.getProperty("operation_mode")));
+		
 		logger.info("BitTorrent client [..{}] for {} started and " +
 			"listening at {}:{}...",
 			new Object[] {
@@ -176,11 +182,10 @@ public class Client extends Observable implements Runnable,
 		this.random = new Random(System.currentTimeMillis());
 	}
 	
-	public OperationMode getOpMode()
-	{
-		return m_opMode;
+	public OperationMode getOpMode() {
+		return this.opMode;
 	}
-
+	
 	/** Get this client's peer ID.
 	 */
 	public String getID() {
@@ -813,6 +818,9 @@ public class Client extends Observable implements Runnable,
 			
 			if (!peer.isSeed())
 				this.reconnector.followPeer(peer);
+			// TODO also consider not following peers with 90%+ of the file, when their bitfield hasn't changed in a while
+			// some peers constantly sends almost complete bitfield again and again, and they're probably disguised peers
+			// This parameters (i.e percentage and time not updating bitfield) should be read from properties 
 		}
 		peer.reset();
 	}
@@ -898,8 +906,7 @@ public class Client extends Observable implements Runnable,
 	private class Reconnector implements Runnable {
 
 		private Thread thread;
-		//private Set<SharingPeer> retryPeers;
-		private ConcurrentMap<String, SharingPeer> retryPeers;
+		public ConcurrentMap<String, SharingPeer> retryPeers;
 		private int interval; // In seconds
 		private int retries;
 		
