@@ -47,6 +47,9 @@ import java.util.concurrent.Future;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import timc.common.TIMConfigurator;
+import timc.common.Utils.OperationMode;
+
 /** A torrent shared by the BitTorrent client.
  *
  * <p>
@@ -87,6 +90,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	private SortedSet<Piece> rarest;
 	private BitSet completedPieces;
 	private BitSet requestedPieces;
+	// *** ADDED BY CHIKO
+	private BitSet fakeCompletedPieces;
+	// *** ADDED BY CHIKO
 
 	/** Create a new shared torrent from a base Torrent object.
 	 *
@@ -204,6 +210,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		this.rarest = Collections.synchronizedSortedSet(new TreeSet<Piece>());
 		this.completedPieces = new BitSet();
 		this.requestedPieces = new BitSet();
+
+		// *** ADDED BY CHIKO
+		this.fakeCompletedPieces = new BitSet();
+		// *** ADDED BY CHIKO
 	}
 
 	/** Create a new shared torrent from the given torrent file.
@@ -278,6 +288,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				(double)this.getSize() / this.pieceLength));
 		this.pieces = new Piece[nPieces];
 		this.completedPieces = new BitSet(nPieces);
+		// *** ADDED BY CHIKO
+		this.fakeCompletedPieces = new BitSet(nPieces);
+		// *** ADDED BY CHIKO
 
 		this.piecesHashes.clear();
 
@@ -323,6 +336,9 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				Piece piece = task.get();
 				if (this.pieces[piece.getIndex()].isValid()) {
 					this.completedPieces.set(piece.getIndex());
+					// *** ADDED BY CHIKO
+					this.fakeCompletedPieces.set(piece.getIndex());
+					// *** ADDED BY CHIKO
 					this.left -= piece.size();
 				}
 			}
@@ -411,6 +427,20 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			return (BitSet)this.completedPieces.clone();
 		}
 	}
+	
+	// *** ADDED BY CHIKO
+	/** Return a FAKE copy of the completed pieces bitset.
+	 */
+	public BitSet getFakeCompletedPieces() {
+		if (!this.isInitialized()) {
+			throw new IllegalStateException("Torrent not yet initialized!");
+		}
+
+		synchronized (this.fakeCompletedPieces) {
+			return (BitSet)this.fakeCompletedPieces.clone();
+		}
+	}
+	// *** ADDED BY CHIKO
 
 	/** Return a copy of the requested pieces bitset.
 	 */
@@ -469,6 +499,18 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				(float)this.pieces.length * 100.0f
 			: 0.0f;
 	}
+	
+	/**
+	 * ADDED BY CHIKO
+	 * this returns the completion rate as a number between 0 and 1.
+	 * @return
+	 */
+	public float getCompletionAsFraction() {
+		return this.isInitialized()
+			? (float)this.completedPieces.cardinality() /
+				(float)this.pieces.length
+			: 0.0f;
+	}
 
 	/** Mark a piece as completed, decremeting the piece size in bytes from our
 	 * left bytes to download counter.
@@ -482,6 +524,23 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		// this torrent.
 		this.left -= piece.size();
 		this.completedPieces.set(piece.getIndex());
+		
+		// *** ADDED BY CHIKO
+		boolean updateFakeBitfield = 
+			(TIMConfigurator.getOpMode() == OperationMode.NeverSeed && this.getCompletionAsFraction() <= TIMConfigurator.getHalfSeedCompletionRate())
+			|| (TIMConfigurator.getOpMode() != OperationMode.NeverSeed);
+		
+		if (updateFakeBitfield)
+			this.fakeCompletedPieces.set(piece.getIndex());
+		
+		logger.info("Updated bitfields. Completed pieces:[{}/{}] Fake completed pieces:[{}/{}]",
+				new Object[] {
+					this.completedPieces.cardinality(), 
+					this.pieces.length, 
+					this.fakeCompletedPieces.cardinality(), 
+					this.pieces.length
+					});;
+		// *** ADDED BY CHIKO
 	}
 
 	/** PeerActivityListener handler(s). *************************************/

@@ -123,18 +123,10 @@ public class Client extends Observable implements Runnable,
 	private ConnectionHandler service;
 	private Announce announce;
 	private Reconnector reconnector;
-	
-	/** Added when received from tracker, removed if initial connection failed.
-	 * 	Also contains peers which are currently handled by Reconnector, or that we don't want
-	 * 	to connect with them again (i.e seeders). */
 	private ConcurrentMap<String, SharingPeer> peers;
-	/** Added when handshake is completed, removed when IOException occurred 
-	 * on OutgoingThread or IncomingThread */
 	private ConcurrentMap<String, SharingPeer> connected;
 
 	private Random random;
-
-	private OperationMode opMode;
 	
 	/** Initialize the BitTorrent client.
 	 *
@@ -165,9 +157,10 @@ public class Client extends Observable implements Runnable,
 		int retryInterval = Integer.parseInt(TIMConfigurator.getProperty("retry_interval"));
 		int numRetries = Integer.parseInt(TIMConfigurator.getProperty("num_retries"));
 		this.reconnector = this.new Reconnector(retryInterval, numRetries);
-
-		opMode = OperationMode.get(Integer.parseInt(TIMConfigurator.getProperty("operation_mode")));
 		
+		// Initializing global configuration
+		TIMConfigurator.initialize();
+
 		logger.info("BitTorrent client [..{}] for {} started and " +
 			"listening at {}:{}...",
 			new Object[] {
@@ -176,14 +169,15 @@ public class Client extends Observable implements Runnable,
 				this.address.getAddress().getHostName(),
 				this.address.getPort()
 			});
+		
+		logger.info("Client running at mode {}", TIMConfigurator.getOpMode().toString());
+		if (TIMConfigurator.getOpMode() != OperationMode.Normal) {
+			logger.info("half-seeding set to {}%", String.format("%.2f", TIMConfigurator.getHalfSeedCompletionRate()*100f));
+		}
 
 		this.peers = new ConcurrentHashMap<String, SharingPeer>();
 		this.connected = new ConcurrentHashMap<String, SharingPeer>();
 		this.random = new Random(System.currentTimeMillis());
-	}
-	
-	public OperationMode getOpMode() {
-		return this.opMode;
 	}
 	
 	/** Get this client's peer ID.
@@ -397,7 +391,8 @@ public class Client extends Observable implements Runnable,
 				choked++;
 			}
 		}
-
+		
+		// [how many choked us]/[how many we're connected to now]/[how many we were ever connected to]
 		logger.info("BitTorrent client {}, {}/{}/{} peers, {}/{}/{} pieces " +
 			"({}%, {} requested), {}/{} kB/s.",
 			new Object[] {
@@ -783,11 +778,30 @@ public class Client extends Observable implements Runnable,
 						this.torrent.getPieceCount()
 					});
 
-				// Send a HAVE message to all connected peers
-				Message have = Message.HaveMessage.craft(piece.getIndex());
-				for (SharingPeer remote : this.connected.values()) {
-					remote.send(have);
+//				// Send a HAVE message to all connected peers
+//				Message have = Message.HaveMessage.craft(piece.getIndex());
+//				for (SharingPeer remote : this.connected.values()) {
+//					remote.send(have);
+//				}
+				
+				// *** ADDED BY CHIKO
+				boolean sendHaveMessages = 
+					(TIMConfigurator.getOpMode() == OperationMode.NeverSeed && this.torrent.getCompletionAsFraction() <= TIMConfigurator.getHalfSeedCompletionRate())
+					|| (TIMConfigurator.getOpMode() != OperationMode.NeverSeed);
+				
+				if (!sendHaveMessages) {
+					logger.info("NeverSeed mode: After piece completed, reached completion rate {}%/{}%. NOT sending HAVE messages to peers", 
+							String.format("%.2f", this.torrent.getCompletion()),
+							String.format("%.2f", TIMConfigurator.getHalfSeedCompletionRate()*100));
 				}
+				else {
+					// Send a HAVE message to all connected peers
+					Message have = Message.HaveMessage.craft(piece.getIndex());
+					for (SharingPeer remote : this.connected.values()) {
+						remote.send(have);
+					}
+				}
+				// *** ADDED BY CHIKO
 
 				// Force notify after each piece is completed to propagate download
 				// completion information (or new seeding state)
@@ -818,9 +832,6 @@ public class Client extends Observable implements Runnable,
 			
 			if (!peer.isSeed())
 				this.reconnector.followPeer(peer);
-			// TODO also consider not following peers with 90%+ of the file, when their bitfield hasn't changed in a while
-			// some peers constantly sends almost complete bitfield again and again, and they're probably disguised peers
-			// This parameters (i.e percentage and time not updating bitfield) should be read from properties 
 		}
 		peer.reset();
 	}
@@ -906,7 +917,8 @@ public class Client extends Observable implements Runnable,
 	private class Reconnector implements Runnable {
 
 		private Thread thread;
-		public ConcurrentMap<String, SharingPeer> retryPeers;
+		//private Set<SharingPeer> retryPeers;
+		private ConcurrentMap<String, SharingPeer> retryPeers;
 		private int interval; // In seconds
 		private int retries;
 		
