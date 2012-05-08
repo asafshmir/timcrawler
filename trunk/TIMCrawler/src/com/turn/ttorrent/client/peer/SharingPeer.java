@@ -34,6 +34,9 @@ import java.util.concurrent.LinkedBlockingQueue;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import timc.common.TIMConfigurator;
+import timc.common.Utils.OperationMode;
+
 /** A peer exchanging on a torrent with the BitTorrent client.
  *
  * <p>
@@ -516,39 +519,98 @@ public class SharingPeer extends Peer implements MessageListener {
 
 				break;
 			case PIECE:
-				// Record the incoming piece block.
-
-				// Should we keep track of the requested pieces and act when we
-				// get a piece we didn't ask for, or should we just stay
-				// greedy?
-				Message.PieceMessage piece = (Message.PieceMessage)msg;
-				Piece p = this.torrent.getPiece(piece.getPiece());
-
-				// Remove the corresponding request from the request to make
-				// room for next block requests.
-				this.removeBlockRequest(piece);
-				this.download.add(piece.getBlock().capacity());
-
-				try {
-					p.record(piece.getBlock(), piece.getOffset());
-
-					// If the block offset equals the piece size and the block
-					// length is 0, it means the piece has been entirely
-					// downloaded. In this case, we have nothing to save, but
-					// we should validate the piece.
-					if (piece.getOffset() + piece.getBlock().capacity()
-							== p.size()) {
-						p.validate();
-						this.firePieceCompleted(p);
-						this.requestedPiece = null;
-						this.firePeerReady();
-					} else {
-						this.requestNextBlocks();
-					}
-				} catch (IOException ioe) {
-					this.fireIOException(ioe);
-					break;
+				
+				// *** ADDED BY CHIKO
+				
+				// we ignore ONLY if we're at we're half seeding with "drop new pieces" and we passed the completion rate
+				boolean shouldIgnorePiece = 
+					(TIMConfigurator.getOpMode() == OperationMode.HalfSeedDropNewPieces)
+					&& (this.torrent.getCompletionAsFraction() > TIMConfigurator.getHalfSeedCompletionRate());
+				
+				if (shouldIgnorePiece) {
+					logger.info("{} mode: Received new piece from peer {} but passed specified completion rate [{}%/{}%]. Ignoring the piece!", 
+							new Object[] {
+							TIMConfigurator.getOpMode(), 
+							this,
+							String.format("%.2f", this.torrent.getCompletion()),
+							String.format("%.2f", TIMConfigurator.getHalfSeedCompletionRate())
+					});
 				}
+				else {
+					// TODO: check if just ignoring the entire message is OK
+					// what about requested (interested) pieces? will the peer keep sending us other pieces/blocks if we didn't request them?
+					// Do we have to keep sending the same requests over and over?
+					
+					// Record the incoming piece block.
+
+					// Should we keep track of the requested pieces and act when we
+					// get a piece we didn't ask for, or should we just stay
+					// greedy?
+					Message.PieceMessage piece = (Message.PieceMessage)msg;
+					Piece p = this.torrent.getPiece(piece.getPiece());
+
+					// Remove the corresponding request from the request to make
+					// room for next block requests.
+					this.removeBlockRequest(piece);
+					this.download.add(piece.getBlock().capacity());
+
+					try {
+						p.record(piece.getBlock(), piece.getOffset());
+
+						// If the block offset equals the piece size and the block
+						// length is 0, it means the piece has been entirely
+						// downloaded. In this case, we have nothing to save, but
+						// we should validate the piece.
+						if (piece.getOffset() + piece.getBlock().capacity()
+								== p.size()) {
+							p.validate();
+							this.firePieceCompleted(p);
+							this.requestedPiece = null;
+							this.firePeerReady();
+						} else {
+							this.requestNextBlocks();
+						}
+					} catch (IOException ioe) {
+						this.fireIOException(ioe);
+						break;
+					}					
+				}
+				// *** ADDED BY CHIKO
+				
+				
+//				// Record the incoming piece block.
+//
+//				// Should we keep track of the requested pieces and act when we
+//				// get a piece we didn't ask for, or should we just stay
+//				// greedy?
+//				Message.PieceMessage piece = (Message.PieceMessage)msg;
+//				Piece p = this.torrent.getPiece(piece.getPiece());
+//
+//				// Remove the corresponding request from the request to make
+//				// room for next block requests.
+//				this.removeBlockRequest(piece);
+//				this.download.add(piece.getBlock().capacity());
+//
+//				try {
+//					p.record(piece.getBlock(), piece.getOffset());
+//
+//					// If the block offset equals the piece size and the block
+//					// length is 0, it means the piece has been entirely
+//					// downloaded. In this case, we have nothing to save, but
+//					// we should validate the piece.
+//					if (piece.getOffset() + piece.getBlock().capacity()
+//							== p.size()) {
+//						p.validate();
+//						this.firePieceCompleted(p);
+//						this.requestedPiece = null;
+//						this.firePeerReady();
+//					} else {
+//						this.requestNextBlocks();
+//					}
+//				} catch (IOException ioe) {
+//					this.fireIOException(ioe);
+//					break;
+//				}
 				break;
 			case CANCEL:
 				// No need to support
