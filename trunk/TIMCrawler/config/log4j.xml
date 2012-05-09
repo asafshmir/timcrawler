@@ -11,8 +11,8 @@
     	<param name="port" value="4445"/>
     	<param name="locationInfo" value="true"/>
   	</appender>
-  	<appender name="Reconnect" class="org.apache.log4j.RollingFileAppender">
-		<param name="File" value="logs/reconnect.log"/>
+  	<appender name="Interesting" class="org.apache.log4j.RollingFileAppender">
+		<param name="File" value="logs/interesting.log"/>
 		<param name="Append" value="true"/>
 		<param name="MaxFileSize" value="500KB"/>
 		<param name="MaxBackupIndex" value="2"/>
@@ -20,7 +20,7 @@
 			<param name="ConversionPattern" value="%d{yyyy-MM-dd HH:mm:ss} [%-25t] %-5p: %m%n"/>
 		</layout>
 		<filter class="org.apache.log4j.varia.StringMatchFilter">
-			<param name="StringToMatch" value="Reconnect with" />
+			<param name="StringToMatch" value="$$$Interseting$$$" />
 			<param name="AcceptOnMatch" value="true" />
 		</filter>
 		<filter class="org.apache.log4j.varia.DenyAllFilter"/>
@@ -28,7 +28,6 @@
 	<root>
 		<level value="debug" />
 		<appender-ref ref="CA"/>
-		<appender-ref ref="Log4jViewer"/>
-		<!-- appender-ref ref="Reconnect"/-->
+		<appender-ref ref="Interesting"/>
 	</root>
 </log4j:configuration>
