@@ -1,11 +1,11 @@
-package timc.statsLogger;
+package timc.stats;
 
 import java.util.Date;
 import java.util.BitSet;
 
 import com.turn.ttorrent.client.peer.Rate;
 
-public class StatsLoggerReccord {
+public class StatsReccord {
 	
 	public String crawlerPeerID;
 	public String peerID;
