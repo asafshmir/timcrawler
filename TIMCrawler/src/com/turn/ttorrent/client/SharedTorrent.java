@@ -527,8 +527,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		
 		// *** ADDED BY CHIKO
 		boolean updateFakeBitfield = 
-			(TIMConfigurator.getOpMode() == OperationMode.NeverSeed && this.getCompletionAsFraction() <= TIMConfigurator.getHalfSeedCompletionRate())
-			|| (TIMConfigurator.getOpMode() != OperationMode.NeverSeed);
+			(TIMConfigurator.getOpMode() == OperationMode.NeverNotifySeeder && this.getCompletionAsFraction() <= TIMConfigurator.getHalfSeedCompletionRate())
+			|| (TIMConfigurator.getOpMode() != OperationMode.NeverNotifySeeder);
 		
 		if (updateFakeBitfield)
 			this.fakeCompletedPieces.set(piece.getIndex());
