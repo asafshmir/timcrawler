@@ -48,7 +48,7 @@ import org.slf4j.LoggerFactory;
 import timc.common.TIMConfigurator;
 import timc.common.Utils.OperationMode;
 
-import timc.statsLogger.StatsLogger;
+import timc.stats.logger.StatsLogger;
 
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
