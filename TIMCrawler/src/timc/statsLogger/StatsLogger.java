@@ -40,6 +40,7 @@ import timc.statsLogger.StatsLoggerReccord;
 
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
+import com.turn.ttorrent.client.Announce;
 import com.turn.ttorrent.client.AnnounceResponseListener;
 import com.turn.ttorrent.client.IncomingConnectionListener;
 import com.turn.ttorrent.client.Piece;
@@ -61,13 +62,11 @@ import timc.common.Utils.OperationMode;
 import com.turn.ttorrent.client.peer.SharingPeer;
 
 public class StatsLogger implements Runnable, 
-	AnnounceResponseListener, IncomingConnectionListener,
-	PeerActivityListener {
+	AnnounceResponseListener, PeerActivityListener {
 	
 	private static final Logger logger =
 			LoggerFactory.getLogger(StatsLogger.class);
 	
-	private Thread thread;  // should I use?
 	private boolean stop; // TODO - need to enable stopping from Client
 	private ConcurrentMap<String, SharingPeer> peers; // same instance as Client's
 	private ConcurrentMap<String, SharingPeer> connectedPeers;  // same instance as Client's "connected"
@@ -75,17 +74,21 @@ public class StatsLogger implements Runnable,
 	private String crawlerPeerID;
 	private SharedTorrent torrent;
 	private int sleepIntervalMiliSecs;
+	private Announce announce;
+	private Thread thread;
 	
 	
 	// peers and connected must not be null
 	public StatsLogger(ConcurrentMap<String, SharingPeer> peers, ConcurrentMap<String, 
-			SharingPeer> connected, SharedTorrent torrent, String crawlerPeerID)
+			SharingPeer> connected, SharedTorrent torrent, Announce announce, String crawlerPeerID)
 			throws IOException {
 		this.torrent = torrent;
 		this.peers = peers;
 		this.connectedPeers = connected;
 		this.crawlerPeerID = crawlerPeerID;
 		this.thread = null;
+		this.announce = announce;
+		this.announce.register(this);
 
 		
 		logger.info("StatsLogger [..{}] for {} started.",
@@ -107,43 +110,37 @@ public class StatsLogger implements Runnable,
 	public void stop() {
 		this.stop = true;
 	}
-	
-	
-	@Override
-	public void handleNewPeerConnection(Socket s, byte[] peerId) {
-		
-		try {
-
-		} catch (Exception e) {
-
-		}
-	}
 
 	@Override
-	public void handlePeerChoked(SharingPeer peer) {
-		// TODO Auto-generated method stub
-		
-	}
+	public void handlePeerChoked(SharingPeer peer) { /* ignore */ }
 
 	@Override
-	public void handlePeerReady(SharingPeer peer) {
-		// TODO Auto-generated method stub
-		
-	}
+	public void handlePeerReady(SharingPeer peer) { /* ignore */ }
 
 	@Override
-	public void handleBitfieldAvailability(SharingPeer peer,
-			BitSet availablePieces) {
-		// TODO Auto-generated method stub
-		
-	}
+	public void handleBitfieldAvailability(SharingPeer peer, BitSet availablePieces) { /* ignore */ }
 
 	@Override
 	public void handlePeerDisconnected(SharingPeer peer) {
 		// TODO - make sure that every time we disconnect from a peer this method is called, including all scenarios
-		StatsLoggerReccord rec = new StatsLoggerReccord();
+		
+		Map<Integer, StatsLoggerReccord> peerSessions = sessionsMap.get(peer.getHexPeerId());
+				
+		StatsLoggerReccord rec = peerSessions.get(peerSessions.size() - 1);
 		
 		updateRecordOnDisconnection(rec, peer);
+		
+		try {
+			logStatsRecord(rec);
+			
+		} catch (Exception e) {
+			// TODO: handle exception
+		}
+		
+	}
+
+	private void logStatsRecord(StatsLoggerReccord rec) {
+		// TODO Auto-generated method stub
 		
 	}
 
@@ -157,7 +154,18 @@ public class StatsLogger implements Runnable,
 
 	@Override
 	public void handleAnnounceResponse(Map<String, BEValue> answer) {
-		// TODO - update the zero record !!!!!!!!!
+		/* TODO - update the zero record for all relevant peers !!!!!!!!!
+		use similar method in Client
+		for each peer do:
+		first check if contains. if not - create new zero rec anyway, in case this peer changed ID
+		Map<Integer, StatsLoggerReccord> peerSessions = sessionsMap.get(peer.hasPeerId() 
+				? peer.getHexPeerId() : peer.getHostIdentifier());
+				
+		StatsLoggerReccord rec0 = peerSessions.get(0);
+		
+		updateZeroRecordOnDisconnection(rec0, peer);
+		
+		*/ 
 		
 	}
 
@@ -177,8 +185,7 @@ public class StatsLogger implements Runnable,
 		for (SharingPeer peer : this.connectedPeers.values()) {
 			// init zero record (belongs to info received from tracker)
 			StatsLoggerReccord rec0 = new StatsLoggerReccord();
-			rec0.lastSeenByTracker = new Date();
-			rec0.sessionSeqNum = 0;
+			initZeroRecord(rec0, peer);
 			
 			Map<Integer, StatsLoggerReccord> peerSessions = new HashMap<Integer, StatsLoggerReccord>();
 			peerSessions.put(0, rec0);
@@ -188,8 +195,7 @@ public class StatsLogger implements Runnable,
 					numLeechInTorrent, peer);
 			
 			peerSessions.put(1, rec1);
-			this.sessionsMap.put(peer.hasPeerId() ? peer.getHexPeerId() : peer.getHostIdentifier()
-					, peerSessions);		
+			this.sessionsMap.put(peer.getHexPeerId(), peerSessions);		
 		}
 		
 		this.sleepIntervalMiliSecs = 3;
@@ -208,7 +214,7 @@ public class StatsLogger implements Runnable,
 			}
 		}
 		
-		// TODO  -  flush all data to DB
+		// TODO  - consider flushing all data to Writer ??
 		
 	}
 
@@ -253,6 +259,58 @@ public class StatsLogger implements Runnable,
 
 	@Override
 	public void handlePieceCompleted(SharingPeer peer, Piece piece)
-			throws IOException { /* ignore */ }	
+			throws IOException { /* ignore */ }
+
+	public void addNewConnectedPeer(SharingPeer peer) {
+		int numSeedsInTorrent = getNumSeedsInTorrent();
+		int numLeechInTorrent = getNumLeechInTorrent();
+		
+		if (sessionsMap.containsKey(peer.getHexPeerId()))
+		{
+			Map<Integer, StatsLoggerReccord> peerSessions = sessionsMap.get(peer.getHexPeerId());
+			StatsLoggerReccord rec0 = peerSessions.get(0);
+			updateZeroRecordOnConnection(rec0, peer);
+		} 
+		else
+		{
+			StatsLoggerReccord rec0 = new StatsLoggerReccord();
+			initZeroRecord(rec0, peer);
+			
+			Map<Integer, StatsLoggerReccord> peerSessions = new HashMap<Integer, StatsLoggerReccord>();
+			peerSessions.put(0, rec0);
+						
+			// init first record
+			StatsLoggerReccord rec1 = createNewRecord(numSeedsInTorrent,
+					numLeechInTorrent, peer);
+			
+			peerSessions.put(1, rec1);
+			this.sessionsMap.put(peer.getHexPeerId(), peerSessions);
+			
+		}
+		
+	}
+
+	private void initZeroRecord(StatsLoggerReccord rec0, SharingPeer peer) {
+		rec0.lastSeenByTracker = new Date();
+		rec0.sessionSeqNum = 0;
+		rec0.peerID = peer.getPeerIdStr();
+		rec0.peerIP = peer.getIp();
+		rec0.peerPort = peer.getPort();
+	}
+
+	private void updateZeroRecordOnConnection(StatsLoggerReccord rec0,
+			SharingPeer peer) {
+		// TODO Auto-generated method stub
+		// TODO - in general, dont confuse getPeerIdStr (for log records) 
+		// and peer.getHexPeerId (which is for MAPs)
+		
+	}
+
+	// consider if there should be a difference between this method and the one above
+	private void updateZeroRecordOnDisconnection(StatsLoggerReccord rec0,
+			SharingPeer peer) {
+		// TODO Auto-generated method stub
+		
+	}	
 
 }
