@@ -1,31 +1,12 @@
 package timc.statsLogger;
 
-
-import java.io.File;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
-import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketException;
-import java.net.UnknownHostException;
-import java.nio.ByteBuffer;
-import java.text.ParseException;
 import java.util.BitSet;
-import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Observable;
-import java.util.Random;
-import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
-import java.util.TreeSet;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -33,33 +14,17 @@ import org.apache.log4j.xml.DOMConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import timc.common.TIMConfigurator;
-import timc.common.Utils.OperationMode;
-
 import timc.statsLogger.StatsLoggerReccord;
 
 import com.turn.ttorrent.bcodec.BEValue;
-import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.client.Announce;
 import com.turn.ttorrent.client.AnnounceResponseListener;
-import com.turn.ttorrent.client.IncomingConnectionListener;
 import com.turn.ttorrent.client.Piece;
 import com.turn.ttorrent.client.SharedTorrent;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
 import com.turn.ttorrent.client.peer.SharingPeer;
-import com.turn.ttorrent.common.Peer;
-import com.turn.ttorrent.common.Torrent;
 
 import java.util.Date;
-
-
-
-import timc.common.TIMConfigurator;
-import timc.common.Utils.OperationMode;
-
-
-
-import com.turn.ttorrent.client.peer.SharingPeer;
 
 public class StatsLogger implements Runnable, 
 	AnnounceResponseListener, PeerActivityListener {
@@ -68,7 +33,6 @@ public class StatsLogger implements Runnable,
 			LoggerFactory.getLogger(StatsLogger.class);
 	
 	private boolean stop; // TODO - need to enable stopping from Client
-	private ConcurrentMap<String, SharingPeer> peers; // same instance as Client's
 	private ConcurrentMap<String, SharingPeer> connectedPeers;  // same instance as Client's "connected"
 	private ConcurrentMap<String, Map<Integer, StatsLoggerReccord>> sessionsMap;
 	private String crawlerPeerID;
@@ -79,11 +43,10 @@ public class StatsLogger implements Runnable,
 	
 	
 	// peers and connected must not be null
-	public StatsLogger(ConcurrentMap<String, SharingPeer> peers, ConcurrentMap<String, 
-			SharingPeer> connected, SharedTorrent torrent, Announce announce, String crawlerPeerID)
+	public StatsLogger(ConcurrentMap<String, SharingPeer> connected, SharedTorrent torrent, 
+			Announce announce, String crawlerPeerID)
 			throws IOException {
 		this.torrent = torrent;
-		this.peers = peers;
 		this.connectedPeers = connected;
 		this.crawlerPeerID = crawlerPeerID;
 		this.thread = null;
