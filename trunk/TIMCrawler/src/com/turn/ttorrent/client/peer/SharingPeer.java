@@ -450,7 +450,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 				synchronized (this.availablePieces) {
 					this.availablePieces.set(havePiece.getIndex());
-					logger.info("Peer {} now has {} [{}/{}].",
+					logger.trace("Peer {} now has {} [{}/{}].",
 						new Object[] {
 							this,
 							havePiece,
