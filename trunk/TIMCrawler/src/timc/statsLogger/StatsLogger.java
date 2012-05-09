@@ -14,6 +14,8 @@ import org.apache.log4j.xml.DOMConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import timc.stats.StatsWriter;
+import timc.stats.db.DBStatsWriter;
 import timc.statsLogger.StatsLoggerReccord;
 
 import com.turn.ttorrent.bcodec.BEValue;
@@ -40,7 +42,7 @@ public class StatsLogger implements Runnable,
 	private int sleepIntervalMiliSecs;
 	private Announce announce;
 	private Thread thread;
-	
+	private StatsWriter statsWriter;
 	
 	// peers and connected must not be null
 	public StatsLogger(ConcurrentMap<String, SharingPeer> connected, SharedTorrent torrent, 
@@ -52,7 +54,8 @@ public class StatsLogger implements Runnable,
 		this.thread = null;
 		this.announce = announce;
 		this.announce.register(this);
-
+		this.statsWriter = new DBStatsWriter();
+		this.statsWriter.initWriter();
 		
 		logger.info("StatsLogger [..{}] for {} started.",
 				new Object[] {
@@ -102,6 +105,7 @@ public class StatsLogger implements Runnable,
 		
 	}
 
+	// log it to the writer
 	private void logStatsRecord(StatsLoggerReccord rec) {
 		// TODO Auto-generated method stub
 		
