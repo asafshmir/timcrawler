@@ -13,6 +13,7 @@ import java.util.Properties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import timc.common.TIMConfigurator;
 import timc.stats.StatsWriter;
 
 import com.turn.ttorrent.common.Peer;
@@ -22,20 +23,17 @@ public class DBStatsWriter implements StatsWriter {
 	private static final Logger logger =
 			LoggerFactory.getLogger(DBStatsWriter.class);
 	
-	protected Connection conn;
-	protected String dbName; 
+	protected Connection conn; 
 	protected String userName;
 	protected String password;
 	protected String serverName;
 	protected int portNumber;
 	
 	public DBStatsWriter() {
-		// TODO configure from properties?
-		this.userName = "root";
-		this.password = "root";
-		this.serverName = "localhost";
-		this.portNumber = 3306;
-		this.dbName = "tim";		
+		this.userName = TIMConfigurator.getProperty("db_username");
+		this.password = TIMConfigurator.getProperty("db_password");
+		this.serverName = TIMConfigurator.getProperty("db_server_name");
+		this.portNumber = Integer.parseInt(TIMConfigurator.getProperty("db_server_port"));		
 	}
 	  
 	@Override
