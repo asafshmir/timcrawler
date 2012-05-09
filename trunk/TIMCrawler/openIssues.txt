@@ -1,1 +1,0 @@
-* NAT - configuring the server to do port forwarding.
