@@ -607,6 +607,15 @@ public class Client extends Observable implements Runnable,
 	@Override
 	public void handleAnnounceResponse(Map<String, BEValue> answer) {
 		try {
+			
+			int numSeeders = -1;
+			int numLeechers = -1;	
+			if (answer.containsKey("complete"))
+				numSeeders = answer.get("complete").getInt();
+			if (answer.containsKey("incomplete"))
+				numLeechers = answer.get("incomplete").getInt();
+			logger.info("Swarm has {} seeders and {} leechers.", numSeeders, numLeechers);
+			
 			if (!answer.containsKey("peers")) {
 				// No peers returned by the tracker. Apparently we're alone on
 				// this one for now.
@@ -626,7 +635,7 @@ public class Client extends Observable implements Runnable,
 						String ip = new String(info.get("ip").getBytes(),
 								Torrent.BYTE_ENCODING);
 						int port = info.get("port").getInt();
-						this.processAnnouncedPeer(peerId, ip, port);
+						this.processAnnouncedPeerAsynchronously(peerId, ip, port);
 					} catch (NullPointerException npe) {
 						throw new ParseException("Missing field from peer " +
 								"information in tracker response!", 0);
@@ -651,7 +660,7 @@ public class Client extends Observable implements Runnable,
 						.getHostAddress();
 					int port = (0xFF & (int)peers.get()) << 8
 						| (0xFF & (int)peers.get());
-					this.processAnnouncedPeer(null, ip, port);
+					this.processAnnouncedPeerAsynchronously(null, ip, port);
 				}
 			}
 		} catch (UnknownHostException uhe) {
@@ -665,6 +674,41 @@ public class Client extends Observable implements Runnable,
 		}
 	}
 
+	
+	/** Process a peer's information obtained in an announce reply asynchronously.
+	 *
+	 * <p>
+	 * Start a new thread and call processAnnouncedPeer with the given parameters.
+	 * </p>
+	 *
+	 * @param peerId An optional peerId byte array.
+	 * @param ip The peer's IP address.
+	 * @param port The peer's port.
+	 */
+	private void processAnnouncedPeerAsynchronously(byte[] peerId, String ip, int port) {
+		
+		class PeerConnector implements Runnable {
+			private byte[] peerId;
+			private String ip;
+			private int port;
+			
+			public PeerConnector(byte[] peerId, String ip, int port) {
+				this.peerId = peerId;
+				this.ip = ip;
+				this.port = port;
+			}
+			
+			public void run() {
+				processAnnouncedPeer(this.peerId, this.ip, this.port);
+			}
+		}
+		
+		Thread connectThread = new Thread(new PeerConnector(peerId, ip, port));
+		connectThread.setName("bt-connect(" + ip + ")");
+		connectThread.start();
+	}
+	
+	
 	/** Process a peer's information obtained in an announce reply.
 	 *
 	 * <p>
