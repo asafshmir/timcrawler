@@ -266,8 +266,7 @@ public class Announce implements Runnable, AnnounceResponseListener {
 
 		params.put("peer_id", this.id);
 		params.put("port", Integer.valueOf(this.address.getPort()).toString());
-		params.put("uploaded", Long.valueOf(this.torrent.getUploaded()).toString());
-		// TODO impersonate as a seeder - downloaded=<file size> uploaded=? (TC gave random number> left=0  
+		params.put("uploaded", Long.valueOf(this.torrent.getUploaded()).toString());  
 		params.put("downloaded", Long.valueOf(this.torrent.getDownloaded()).toString());
 		params.put("left", Long.valueOf(this.torrent.getLeft()).toString());
 		// TODO consider not sending event parameter - TC didn't send it
