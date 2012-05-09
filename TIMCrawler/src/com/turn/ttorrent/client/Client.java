@@ -48,6 +48,8 @@ import org.slf4j.LoggerFactory;
 import timc.common.TIMConfigurator;
 import timc.common.Utils.OperationMode;
 
+import timc.statsLogger.StatsLogger;
+
 import com.turn.ttorrent.bcodec.BEValue;
 import com.turn.ttorrent.bcodec.InvalidBEncodingException;
 import com.turn.ttorrent.client.peer.PeerActivityListener;
@@ -123,8 +125,16 @@ public class Client extends Observable implements Runnable,
 	private ConnectionHandler service;
 	private Announce announce;
 	private Reconnector reconnector;
+	
+	/** Added when received from tracker, removed if initial connection failed.
+	 * 	Also contains peers which are currently handled by Reconnector, or that we don't want
+	 * 	to connect with them again (i.e seeders). */
 	private ConcurrentMap<String, SharingPeer> peers;
+	/** Added when handshake is completed, removed when IOException occurred 
+	 * on OutgoingThread or IncomingThread */
 	private ConcurrentMap<String, SharingPeer> connected;
+	
+	private StatsLogger statsLogger;
 
 	private Random random;
 	
@@ -178,6 +188,9 @@ public class Client extends Observable implements Runnable,
 		this.peers = new ConcurrentHashMap<String, SharingPeer>();
 		this.connected = new ConcurrentHashMap<String, SharingPeer>();
 		this.random = new Random(System.currentTimeMillis());
+		
+		this.statsLogger = new StatsLogger(this.connected, this.torrent, 
+				this.announce , getID());
 	}
 	
 	/** Get this client's peer ID.
@@ -317,6 +330,7 @@ public class Client extends Observable implements Runnable,
 		this.announce.start();
 		this.service.start();
 		this.reconnector.start();
+		this.statsLogger.start();
 
 		int optimisticIterations = 0;
 		int rateComputationIterations = 0;
@@ -362,6 +376,8 @@ public class Client extends Observable implements Runnable,
 		}
 
 		this.torrent.close();
+		
+		this.statsLogger.stop();
 
 		// Determine final state
 		if (this.torrent.isFinished()) {
@@ -714,6 +730,10 @@ public class Client extends Observable implements Runnable,
 
 			this.connected.put(peer.getHexPeerId(), peer);
 			peer.register(this.torrent);
+			
+			this.statsLogger.addNewConnectedPeer(peer);
+			peer.register(this.statsLogger);
+						
 			logger.debug("New peer connection with {} [{}/{}].",
 				new Object[] {
 					peer,
