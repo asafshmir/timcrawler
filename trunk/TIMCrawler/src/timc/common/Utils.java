@@ -1,27 +1,23 @@
 package timc.common;
 
-public class Utils 
-{
-	public enum OperationMode
-	{
+public class Utils  {
+	
+	public enum OperationMode {
 		Normal(0),
-		NeverSeed(1),
+		NeverNotifySeeder(1),
 		HalfSeedDropNewPieces(2);
 		
-		int m_mode;
-		private OperationMode(int mode)
-		{
-			m_mode = mode;
+		int mode;
+		private OperationMode(int mode) {
+			this.mode = mode;
 		}
-		public int getMode()
-		{
-			return m_mode;
+		
+		public int getMode() {
+			return mode;
 		}
 
-		public static OperationMode get(int mode)
-		{
-			for (OperationMode opMode : values())
-			{
+		public static OperationMode get(int mode) {
+			for (OperationMode opMode : values()) {
 				if (opMode.getMode()== mode)
 					return opMode;
 			}

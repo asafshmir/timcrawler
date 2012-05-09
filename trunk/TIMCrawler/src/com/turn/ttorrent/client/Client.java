@@ -806,8 +806,8 @@ public class Client extends Observable implements Runnable,
 				
 				// *** ADDED BY CHIKO
 				boolean sendHaveMessages = 
-					(TIMConfigurator.getOpMode() == OperationMode.NeverSeed && this.torrent.getCompletionAsFraction() <= TIMConfigurator.getHalfSeedCompletionRate())
-					|| (TIMConfigurator.getOpMode() != OperationMode.NeverSeed);
+					(TIMConfigurator.getOpMode() == OperationMode.NeverNotifySeeder && this.torrent.getCompletionAsFraction() <= TIMConfigurator.getHalfSeedCompletionRate())
+					|| (TIMConfigurator.getOpMode() != OperationMode.NeverNotifySeeder);
 				
 				if (!sendHaveMessages) {
 					logger.info("NeverSeed mode: After piece completed, reached completion rate {}%/{}%. NOT sending HAVE messages to peers", 

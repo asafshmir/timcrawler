@@ -36,7 +36,7 @@ public class TIMConfigurator {
 	{
 		// initializing specific configurations
 		opMode = OperationMode.get(Integer.parseInt(getProperty("operation_mode")));
-		if (opMode == OperationMode.NeverSeed || opMode == OperationMode.HalfSeedDropNewPieces) {
+		if (opMode == OperationMode.NeverNotifySeeder || opMode == OperationMode.HalfSeedDropNewPieces) {
 			halfSeedCompletionRate = Float.parseFloat(getProperty("half_seed_completion_rate"));
 			if (halfSeedCompletionRate < 0 || halfSeedCompletionRate > 1) {
 				logger.error("Invalid half_seed_completion_rate: {}. Should be between 0 and 1", halfSeedCompletionRate);
