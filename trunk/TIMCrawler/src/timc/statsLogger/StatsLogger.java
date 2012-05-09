@@ -31,6 +31,8 @@ import java.util.Date;
 public class StatsLogger implements Runnable, 
 	AnnounceResponseListener, PeerActivityListener {
 	
+	// TODO: add getNumSeeders and getNumLeechers methods to SharedTorrent or Announce
+	
 	private static final Logger logger =
 			LoggerFactory.getLogger(StatsLogger.class);
 	
