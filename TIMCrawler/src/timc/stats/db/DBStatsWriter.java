@@ -23,6 +23,7 @@ public class DBStatsWriter implements StatsWriter {
 	private static final Logger logger =
 			LoggerFactory.getLogger(DBStatsWriter.class);
 	
+	protected boolean debug;
 	protected Connection conn; 
 	protected String userName;
 	protected String password;
@@ -30,6 +31,7 @@ public class DBStatsWriter implements StatsWriter {
 	protected int portNumber;
 	
 	public DBStatsWriter() {
+		this.debug = TIMConfigurator.getProperty("db_debug").equals("1");
 		this.userName = TIMConfigurator.getProperty("db_username");
 		this.password = TIMConfigurator.getProperty("db_password");
 		this.serverName = TIMConfigurator.getProperty("db_server_name");
@@ -39,6 +41,9 @@ public class DBStatsWriter implements StatsWriter {
 	@Override
 	public Object writeTestStats(Date startTime, Date endTime, String infoHash,
 			int totalSize, int pieceSize, int numPieces) {
+		
+		if (this.debug)
+			return null;
 		
 		int testId = 0;		
 		
@@ -55,6 +60,9 @@ public class DBStatsWriter implements StatsWriter {
 	@Override
 	public void writeSessionStats(Object testId, Peer peer, java.util.Date startTime, java.util.Date lastSeen,
 			BitSet initialBitfield) {
+		
+		if (this.debug)
+			return;
 
 		if (!(testId instanceof Integer)) return;
 		int testIdIntVal = ((Integer)testId).intValue();
@@ -175,8 +183,6 @@ public class DBStatsWriter implements StatsWriter {
 		return sessionNum + 1;
 	}
 	
-	
-	
 	protected Connection getConnection() throws SQLException {
 		Connection conn = null;
 	    Properties connectionProps = new Properties();
@@ -185,15 +191,19 @@ public class DBStatsWriter implements StatsWriter {
 
 	    conn = DriverManager.getConnection(
 	                   "jdbc:mysql://" + this.serverName + ":" + this.portNumber + "/", connectionProps);
-	    
-	    logger.debug("Connected to database");
 	    return conn;
 	}
 
 	@Override
 	public boolean initWriter() {
+		if (this.debug) {
+			logger.debug("db_debug mode - not performing any DB operations");
+			return true;
+		}
+		
 		try {
 			this.conn = getConnection();
+			logger.debug("Connected to database");
 		} catch (SQLException e) {
 			logger.error("Unable to connect to the DB: {}", e.getMessage());
 			return false;
@@ -203,7 +213,11 @@ public class DBStatsWriter implements StatsWriter {
 
 	@Override
 	public void closeWriter() {
+		if (this.debug)
+			return;
+		
 		try {
+			
 			this.conn.close();
 			logger.debug("Disconnected from database");
 		} catch (SQLException e) {
