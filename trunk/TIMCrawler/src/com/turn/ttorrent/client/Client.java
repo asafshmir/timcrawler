@@ -981,7 +981,6 @@ public class Client extends Observable implements Runnable,
 	private class Reconnector implements Runnable {
 
 		private Thread thread;
-		//private Set<SharingPeer> retryPeers;
 		private ConcurrentMap<String, SharingPeer> retryPeers;
 		private int interval; // In seconds
 		private int retries;
@@ -1000,20 +999,21 @@ public class Client extends Observable implements Runnable,
 			}
 		}
 		
-		
 		@Override
 		public void run() {
 			
 			while (!stop) {
 				try {
 					Thread.sleep(this.interval * 1000);
-				} catch (InterruptedException e) {
-					// ignore
-				}
+				} catch (InterruptedException e) {/* ignore */}
 				retryAllPeers();
 			}
 		}
 		
+		/**
+		 * Add peer to following list, this mean that we try to connect to him until success.
+		 * @param peer the peer to be followed
+		 */
 		public synchronized void followPeer(SharingPeer peer) {
 			if (immediateReconnect(peer))
 				return;
@@ -1023,7 +1023,6 @@ public class Client extends Observable implements Runnable,
 					? peer.getHexPeerId()
 					: peer.getHostIdentifier(), peer);
 		}
-		
 		
 		private boolean immediateReconnect(SharingPeer peer) {
 			int maxTries = this.retries;
