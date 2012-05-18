@@ -5,7 +5,7 @@ import java.util.BitSet;
 
 import com.turn.ttorrent.client.peer.Rate;
 
-public class StatsReccord {
+public class SessionRecord {
 	
 	public String crawlerPeerID;
 	public String peerID;
