@@ -397,6 +397,16 @@ public class Client extends Observable implements Runnable,
 	 * completion and current transmission rates.
 	 */
 	public synchronized void info() {
+		logger.info(infoStr());
+	}
+	
+	/** Return information about the BitTorrent client state.
+	 *
+	 * It includes the number of choked peers, number of connected peers, number
+	 * of known peers, information about the torrent availability and
+	 * completion and current transmission rates.
+	 */
+	public synchronized String infoStr() {
 		float dl = 0;
 		float ul = 0;
 		int choked = 0;
@@ -409,21 +419,22 @@ public class Client extends Observable implements Runnable,
 		}
 		
 		// [how many choked us]/[how many we're connected to now]/[how many we were ever connected to]
-		logger.info("BitTorrent client {}, {}/{}/{} peers, {}/{}/{} pieces " +
-			"({}%, {} requested), {}/{} kB/s.",
-			new Object[] {
-				this.getState().name(),
-				choked,
-				this.connected.size(),
-				this.peers.size(),
-				this.torrent.getCompletedPieces().cardinality(),
-				this.torrent.getAvailablePieces().cardinality(),
-				this.torrent.getPieceCount(),
-				String.format("%.2f", this.torrent.getCompletion()),
-				this.torrent.getRequestedPieces().cardinality(),
-				String.format("%.2f", dl/1024.0),
-				String.format("%.2f", ul/1024.0)
-			});
+		String infoString = String.format("BitTorrent client %s , %d/%d/%d peers, %d/%d/%d pieces " +
+			"(%s%% , %d requested), %s/%s kB/s.",
+			this.getState().name(),
+			choked,
+			this.connected.size(),
+			this.peers.size(),
+			this.torrent.getCompletedPieces().cardinality(),
+			this.torrent.getAvailablePieces().cardinality(),
+			this.torrent.getPieceCount(),
+			String.format("%.2f", this.torrent.getCompletion()),
+			this.torrent.getRequestedPieces().cardinality(),
+			String.format("%.2f", dl/1024.0),
+			String.format("%.2f", ul/1024.0)
+			);
+		
+		return infoString;
 	}
 
 	/** Reset peers download and upload rates.
