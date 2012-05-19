@@ -1068,7 +1068,7 @@ public class Client extends Observable implements Runnable,
 		
 		private void retryAllPeers() {
 			Iterator<Map.Entry<String, SharingPeer>> it = this.retryPeers.entrySet().iterator();
-			while (it.hasNext()) {
+			while (it.hasNext() && !stop) {
 				if (immediateReconnect(it.next().getValue())) {
 					it.remove();
 				}
