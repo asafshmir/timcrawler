@@ -407,34 +407,42 @@ public class Client extends Observable implements Runnable,
 	 * completion and current transmission rates.
 	 */
 	public synchronized String infoStr() {
-		float dl = 0;
-		float ul = 0;
-		int choked = 0;
-		for (SharingPeer peer : this.connected.values()) {
-			dl += peer.getDLRate().get();
-			ul += peer.getULRate().get();
-			if (peer.isChoked()) {
-				choked++;
+		
+		StringBuilder sb = new StringBuilder(
+				String.format("BitTorrent client %s", this.getState().name()));
+		
+		if ((ClientState.SEEDING.equals(state) || ClientState.SHARING.equals(state))) {
+			
+			float dl = 0;
+			float ul = 0;
+			int choked = 0;
+			for (SharingPeer peer : this.connected.values()) {
+				dl += peer.getDLRate().get();
+				ul += peer.getULRate().get();
+				if (peer.isChoked()) {
+					choked++;
+				}
 			}
+			
+			// [how many choked us]/[how many we're connected to now]/[how many we were ever connected to]
+			String infoString = String.format(", %d/%d/%d peers, %d/%d/%d pieces " +
+				"(%s%% , %d requested), %s/%s kB/s.",
+				choked,
+				this.connected.size(),
+				this.peers.size(),
+				this.torrent.getCompletedPieces().cardinality(),
+				this.torrent.getAvailablePieces().cardinality(),
+				this.torrent.getPieceCount(),
+				String.format("%.2f", this.torrent.getCompletion()),
+				this.torrent.getRequestedPieces().cardinality(),
+				String.format("%.2f", dl/1024.0),
+				String.format("%.2f", ul/1024.0)
+				);
+			
+			sb.append(infoString);
 		}
 		
-		// [how many choked us]/[how many we're connected to now]/[how many we were ever connected to]
-		String infoString = String.format("BitTorrent client %s , %d/%d/%d peers, %d/%d/%d pieces " +
-			"(%s%% , %d requested), %s/%s kB/s.",
-			this.getState().name(),
-			choked,
-			this.connected.size(),
-			this.peers.size(),
-			this.torrent.getCompletedPieces().cardinality(),
-			this.torrent.getAvailablePieces().cardinality(),
-			this.torrent.getPieceCount(),
-			String.format("%.2f", this.torrent.getCompletion()),
-			this.torrent.getRequestedPieces().cardinality(),
-			String.format("%.2f", dl/1024.0),
-			String.format("%.2f", ul/1024.0)
-			);
-		
-		return infoString;
+		return sb.toString();
 	}
 
 	/** Reset peers download and upload rates.
