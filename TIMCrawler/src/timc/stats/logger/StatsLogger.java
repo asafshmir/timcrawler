@@ -14,7 +14,7 @@ import org.apache.log4j.xml.DOMConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import timc.stats.StatsReccord;
+import timc.stats.SessionRecord;
 import timc.stats.StatsWriter;
 import timc.stats.db.DBStatsWriter;
 
@@ -38,7 +38,7 @@ public class StatsLogger implements Runnable,
 	
 	private boolean stop; // TODO - need to enable stopping from Client
 	private ConcurrentMap<String, SharingPeer> connectedPeers;  // same instance as Client's "connected"
-	private ConcurrentMap<String, Map<Integer, StatsReccord>> sessionsMap;
+	private ConcurrentMap<String, Map<Integer, SessionRecord>> sessionsMap;
 	private String crawlerPeerID;
 	private SharedTorrent torrent;
 	private int sleepIntervalMiliSecs;
@@ -92,9 +92,9 @@ public class StatsLogger implements Runnable,
 	public void handlePeerDisconnected(SharingPeer peer) {
 		// TODO - make sure that every time we disconnect from a peer this method is called, including all scenarios
 		
-		Map<Integer, StatsReccord> peerSessions = sessionsMap.get(peer.getHexPeerId());
+		Map<Integer, SessionRecord> peerSessions = sessionsMap.get(peer.getHexPeerId());
 				
-		StatsReccord rec = peerSessions.get(peerSessions.size() - 1);
+		SessionRecord rec = peerSessions.get(peerSessions.size() - 1);
 		
 		updateRecordOnDisconnection(rec, peer);
 		
@@ -108,12 +108,12 @@ public class StatsLogger implements Runnable,
 	}
 
 	// log it to the writer
-	private void logStatsRecord(StatsReccord rec) {
+	private void logStatsRecord(SessionRecord rec) {
 		// TODO Auto-generated method stub
 		
 	}
 
-	private void updateRecordOnDisconnection(StatsReccord rec, SharingPeer peer) {
+	private void updateRecordOnDisconnection(SessionRecord rec, SharingPeer peer) {
 		// TODO - implement !!!!!!!!!
 		
 	}
@@ -146,21 +146,21 @@ public class StatsLogger implements Runnable,
 				"with CrawlerID " + this.crawlerPeerID + "...");
 		
 		
-		sessionsMap = new ConcurrentHashMap<String, Map<Integer, StatsReccord>>();
+		sessionsMap = new ConcurrentHashMap<String, Map<Integer, SessionRecord>>();
 		
 		int numSeedsInTorrent = getNumSeedsInTorrent();
 		int numLeechInTorrent = getNumLeechInTorrent();
 		
 		for (SharingPeer peer : this.connectedPeers.values()) {
 			// init zero record (belongs to info received from tracker)
-			StatsReccord rec0 = new StatsReccord();
+			SessionRecord rec0 = new SessionRecord();
 			initZeroRecord(rec0, peer);
 			
-			Map<Integer, StatsReccord> peerSessions = new HashMap<Integer, StatsReccord>();
+			Map<Integer, SessionRecord> peerSessions = new HashMap<Integer, SessionRecord>();
 			peerSessions.put(0, rec0);
 						
 			// init first record
-			StatsReccord rec1 = createNewRecord(numSeedsInTorrent,
+			SessionRecord rec1 = createNewRecord(numSeedsInTorrent,
 					numLeechInTorrent, peer);
 			
 			peerSessions.put(1, rec1);
@@ -187,9 +187,9 @@ public class StatsLogger implements Runnable,
 		
 	}
 
-	private StatsReccord createNewRecord(int numSeedsInTorrent,
+	private SessionRecord createNewRecord(int numSeedsInTorrent,
 			int numLeechInTorrent, SharingPeer peer) {
-		StatsReccord rec = new StatsReccord();
+		SessionRecord rec = new SessionRecord();
 		rec.lastDownloadRate = peer.getDLRate();
 		rec.completionRate = peer.getAvailablePieces().cardinality() / torrent.getPieceCount();
 		rec.initialBitfield = peer.getAvailablePieces();
@@ -236,20 +236,20 @@ public class StatsLogger implements Runnable,
 		
 		if (sessionsMap.containsKey(peer.getHexPeerId()))
 		{
-			Map<Integer, StatsReccord> peerSessions = sessionsMap.get(peer.getHexPeerId());
-			StatsReccord rec0 = peerSessions.get(0);
+			Map<Integer, SessionRecord> peerSessions = sessionsMap.get(peer.getHexPeerId());
+			SessionRecord rec0 = peerSessions.get(0);
 			updateZeroRecordOnConnection(rec0, peer);
 		} 
 		else
 		{
-			StatsReccord rec0 = new StatsReccord();
+			SessionRecord rec0 = new SessionRecord();
 			initZeroRecord(rec0, peer);
 			
-			Map<Integer, StatsReccord> peerSessions = new HashMap<Integer, StatsReccord>();
+			Map<Integer, SessionRecord> peerSessions = new HashMap<Integer, SessionRecord>();
 			peerSessions.put(0, rec0);
 						
 			// init first record
-			StatsReccord rec1 = createNewRecord(numSeedsInTorrent,
+			SessionRecord rec1 = createNewRecord(numSeedsInTorrent,
 					numLeechInTorrent, peer);
 			
 			peerSessions.put(1, rec1);
@@ -259,7 +259,7 @@ public class StatsLogger implements Runnable,
 		
 	}
 
-	private void initZeroRecord(StatsReccord rec0, SharingPeer peer) {
+	private void initZeroRecord(SessionRecord rec0, SharingPeer peer) {
 		rec0.lastSeenByTracker = new Date();
 		rec0.sessionSeqNum = 0;
 		rec0.peerID = peer.getPeerIdStr();
@@ -267,7 +267,7 @@ public class StatsLogger implements Runnable,
 		rec0.peerPort = peer.getPort();
 	}
 
-	private void updateZeroRecordOnConnection(StatsReccord rec0,
+	private void updateZeroRecordOnConnection(SessionRecord rec0,
 			SharingPeer peer) {
 		// TODO Auto-generated method stub
 		// TODO - in general, dont confuse getPeerIdStr (for log records) 
@@ -276,7 +276,7 @@ public class StatsLogger implements Runnable,
 	}
 
 	// consider if there should be a difference between this method and the one above
-	private void updateZeroRecordOnDisconnection(StatsReccord rec0,
+	private void updateZeroRecordOnDisconnection(SessionRecord rec0,
 			SharingPeer peer) {
 		// TODO Auto-generated method stub
 		
