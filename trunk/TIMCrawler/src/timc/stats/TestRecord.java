@@ -9,7 +9,7 @@ public class TestRecord {
 	public Date startTime;
 	public Date endTime;
 	public String infoHash;
-	public int totalSize;
+	public long totalSize;
 	public int pieceSize;
 	public int numPieces;
 
