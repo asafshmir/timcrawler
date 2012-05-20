@@ -8,7 +8,8 @@ import com.turn.ttorrent.client.peer.Rate;
 public class SessionRecord {
 	
 	public String crawlerPeerID;
-	public String peerID;
+	public String peerIdHex;
+	public String peerIdStr;
 	public String peerIP;
 	public int peerPort;
 	public int sessionSeqNum;  // 0 for tracker initiated record
@@ -27,8 +28,8 @@ public class SessionRecord {
 	public int lastNumOfSeeds;
 	public int initialNumOfLeeches;
 	public int lastNumOfLeeches;
-	public Boolean isDisconnectedByCrawler;
+	public Boolean isDisconnectedByCrawler;	
 	
-	// TODO - add getters and setters
+
 
 }
