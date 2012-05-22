@@ -70,13 +70,12 @@ public class DBStatsWriter implements StatsWriter {
 	}
 	
 	@Override
-	public void writeSessionStats(Object testId, SessionRecord session) {
+	public void writeSessionStats(String testId, SessionRecord session) {
 		
 		if (this.debug)
 			return;
 
-		if (!(testId instanceof Integer)) return;
-		int testIdIntVal = ((Integer)testId).intValue();
+		int testIdIntVal = Integer.parseInt(testId);
 		
 		try {
 			insertSessionRecord(testIdIntVal, session.crawlerPeerID, session.peerIdStr, session.peerIP, session.peerPort, 
