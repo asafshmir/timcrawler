@@ -59,7 +59,8 @@ public class StatsWriterTest {
 		}
 
 		SessionRecord sr1 = new SessionRecord();
-		sr1.peerID = peer1.getPeerIdStr();
+		sr1.peerIdStr = peer1.getPeerIdStr();
+		sr1.peerIdHex = peer1.getHexPeerId();
 		sr1.peerIP = peer1.getIp();
 		sr1.peerPort = peer1.getPort();
 		sr1.startTime = start;
@@ -67,7 +68,8 @@ public class StatsWriterTest {
 		sr1.crawlerPeerID = "-UT2002-";
 
 		SessionRecord sr2 = new SessionRecord();
-		sr2.peerID = peer2.getPeerIdStr();
+		sr2.peerIdStr = peer2.getPeerIdStr();
+		sr2.peerIdHex = peer2.getHexPeerId();
 		sr2.peerIP = peer2.getIp();
 		sr2.peerPort = peer2.getPort();
 		sr2.startTime = start;

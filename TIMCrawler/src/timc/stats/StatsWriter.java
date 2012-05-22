@@ -8,7 +8,7 @@ public interface StatsWriter {
 	 * @param test the <code>TestRecord</code> to be written
 	 * @return a unique id that should be given to <code>writeSessionStats</code>.
 	 */
-	public Object writeTestStats(TestRecord test);
+	public String writeTestStats(TestRecord test);
 	
 	/** Update a test record's data.
 	 * 

@@ -646,7 +646,6 @@ public class Client extends Observable implements Runnable,
 				logger.debug("Got tracker response with {} peer(s).",
 					peers.size());
 				for (BEValue peerInfo : peers) {
-					// TODO upsert 'tracker record' (session=0) for each peer
 					Map<String, BEValue> info = peerInfo.getMap();
 
 					try {

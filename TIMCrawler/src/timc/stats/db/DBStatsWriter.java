@@ -37,7 +37,7 @@ public class DBStatsWriter implements StatsWriter {
 	}
 	  
 	@Override
-	public Object writeTestStats(TestRecord test) {
+	public String writeTestStats(TestRecord test) {
 		
 		if (this.debug)
 			return null;
@@ -51,7 +51,7 @@ public class DBStatsWriter implements StatsWriter {
 			logger.error("Unable to insert a record into 'tests' table: {}", e.getMessage());
 		}
 		
-		return new Integer(testId);
+		return new Integer(testId).toString();
 	}
 	
 	@Override
@@ -80,7 +80,7 @@ public class DBStatsWriter implements StatsWriter {
 		int testIdIntVal = ((Integer)testId).intValue();
 		
 		try {
-			insertSessionRecord(testIdIntVal, session.crawlerPeerID, session.peerID, session.peerIP, session.peerPort, 
+			insertSessionRecord(testIdIntVal, session.crawlerPeerID, session.peerIdStr, session.peerIP, session.peerPort, 
 					new Timestamp(session.startTime.getTime()), new Timestamp(session.lastSeen.getTime()));
 		} catch (SQLException e) {
 			logger.error("Unable to insert a record into 'sessions' table: {}", e.getMessage());
@@ -97,7 +97,7 @@ public class DBStatsWriter implements StatsWriter {
 		int testIdIntVal = ((Integer)testId).intValue();
 		
 		try {
-			insertTrackerSessionRecord(testIdIntVal, session.crawlerPeerID, session.peerID, session.peerIP, 
+			insertTrackerSessionRecord(testIdIntVal, session.crawlerPeerID, session.peerIdStr, session.peerIP, 
 					session.peerPort, new Timestamp(session.lastSeenByTracker.getTime()));
 		} catch (SQLException e) {
 			logger.error("Unable to insert a record into 'sessions' table: {}", e.getMessage());
@@ -105,7 +105,7 @@ public class DBStatsWriter implements StatsWriter {
 	}
 	
 	protected int insertTestRecord(int mode, String modeSettings, Timestamp startTime, String infoHash,
-			int totalSize, int pieceSize, int numPieces) throws SQLException {
+			long totalSize, int pieceSize, int numPieces) throws SQLException {
 
 		PreparedStatement stmt = null;
 		String insertSessionSQL = "INSERT INTO `tim`.`tests` " +
@@ -118,7 +118,7 @@ public class DBStatsWriter implements StatsWriter {
 			stmt.setString(2, modeSettings);
 			stmt.setTimestamp(3, startTime);
 	        stmt.setString(4, infoHash);
-	        stmt.setInt(5, totalSize);
+	        stmt.setLong(5, totalSize);
 	        stmt.setInt(6, pieceSize);
 	        stmt.setInt(7, numPieces);
 
