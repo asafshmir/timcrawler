@@ -15,6 +15,7 @@ import java.util.concurrent.ConcurrentMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import timc.common.TIMConfigurator;
 import timc.stats.SessionRecord;
 import timc.stats.TestRecord;
 import timc.stats.StatsWriter;
@@ -35,7 +36,6 @@ import com.turn.ttorrent.common.Torrent;
 import java.util.Date;
 
 public class StatsLogger implements AnnounceResponseListener, PeerActivityListener {		
-	// TODO add logging for diagnostics
 	
 	private static final Logger logger =
 			LoggerFactory.getLogger(StatsLogger.class);
@@ -75,7 +75,7 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		
 		// write the general test record, and get testId while doing so
 		this.testRecord = new TestRecord();
-		testRecord.mode = 0; // TODO: get from config file
+		testRecord.mode = TIMConfigurator.getOpMode().getMode();
 		testRecord.startTime = new Date();
 		testRecord.infoHash = this.torrent.getHexInfoHash();
 		testRecord.totalSize = this.torrent.getSize();
@@ -128,6 +128,8 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 				}				
 			}			
 		}		
+		this.testRecord.endTime = new Date();
+		this.statsWriter.updateTestStats(this.testId, this.testRecord);
 		this.statsWriter.closeWriter();
 	}
 

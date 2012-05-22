@@ -55,13 +55,12 @@ public class DBStatsWriter implements StatsWriter {
 	}
 	
 	@Override
-	public void updateTestStats(Object testId, TestRecord test) {
+	public void updateTestStats(String testId, TestRecord test) {
 
 		if (this.debug)
 			return;
 
-		if (!(testId instanceof Integer)) return;
-		int testIdIntVal = ((Integer)testId).intValue();
+		int testIdIntVal = Integer.parseInt(testId);
 		
 		try {
 			updateTestRecord(testIdIntVal, new Timestamp(test.endTime.getTime()));

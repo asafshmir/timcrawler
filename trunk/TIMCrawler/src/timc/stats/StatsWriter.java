@@ -15,7 +15,7 @@ public interface StatsWriter {
 	 * @param testId the id of the test record to be updates.
 	 * @param test the data that should be used to update the record.
 	 */
-	public void updateTestStats(Object testId, TestRecord test);
+	public void updateTestStats(String testId, TestRecord test);
 	
 	/** Write a new <code>SessionRecord</code>.
 	 * 

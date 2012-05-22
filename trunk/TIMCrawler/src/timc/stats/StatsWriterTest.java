@@ -50,7 +50,7 @@ public class StatsWriterTest {
 		tr.totalSize = 1024;
 		tr.pieceSize = 512;
 		tr.numPieces = 2;
-		Object testId = sw.writeTestStats(tr);
+		String testId = sw.writeTestStats(tr);
 
 		try {
 			Thread.sleep(1000);
