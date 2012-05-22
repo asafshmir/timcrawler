@@ -29,7 +29,7 @@ public interface StatsWriter {
 	 * @param testId Id received by <code>writeTrackerSessionStats</code>.
 	 * @param session the <code>SessionRecord</code> to be written.
 	 */
-	public void writeTrackerSessionStats(Object testId, SessionRecord session);
+	public void writeTrackerSessionStats(String testId, SessionRecord session);
 	
 	/** Initialize the writer.
 	 * 
