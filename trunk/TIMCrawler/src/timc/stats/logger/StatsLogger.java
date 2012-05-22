@@ -12,7 +12,6 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.apache.log4j.xml.DOMConfigurator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -63,8 +62,7 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 	}
 	
 	public void start() {		
-		DOMConfigurator.configure("config/log4j.xml");
-		logger.info("Starting statsLogger for torrent" +
+		logger.info("StatsLogger: Starting statsLogger for torrent" +
 				torrent.getName() + " with crawlerPeerID " +
 				this.crawlerPeerID + "...");
 				
