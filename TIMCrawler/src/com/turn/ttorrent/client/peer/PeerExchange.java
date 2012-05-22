@@ -125,7 +125,7 @@ class PeerExchange {
 		// *** ADDED BY CHIKO
 		BitSet pieces;
 		if (TIMConfigurator.getOpMode() == OperationMode.NeverNotifySeeder) {
-			logger.info("NeverSeed mode: After starting peer exchange with {}, about to send fake bitfield.", this.peer);
+			logger.info("{} mode: After starting peer exchange with {}, about to send fake bitfield.", TIMConfigurator.getOpMode(), this.peer);
 			pieces = this.torrent.getFakeCompletedPieces();
 		}
 		else {

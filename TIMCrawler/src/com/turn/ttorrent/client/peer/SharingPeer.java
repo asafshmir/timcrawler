@@ -334,8 +334,28 @@ public class SharingPeer extends Peer implements MessageListener {
 			throw up; // ah ah.
 		}
 
-		this.requests = new LinkedBlockingQueue<Message.RequestMessage>(
-				SharingPeer.MAX_PIPELINED_REQUESTS);
+//		this.requests = new LinkedBlockingQueue<Message.RequestMessage>(
+//				SharingPeer.MAX_PIPELINED_REQUESTS);
+		
+		// *** ADDED BY CHIKO
+		boolean passedCompletionRateInDropPiecesMode = didPassCompletionRateInDropPiecesMode();
+//			(TIMConfigurator.getOpMode() == OperationMode.HalfSeedDropNewPieces)
+//			&& (this.torrent.getCompletionAsFraction() > TIMConfigurator.getHalfSeedCompletionRate());
+		
+		int queueSize = passedCompletionRateInDropPiecesMode ? 1 : MAX_PIPELINED_REQUESTS;
+		// The reason for this is that in this situation for each BLOCK that we receive from the peer
+		// we will reach this method with a new piece and send a number of block requests the size of this queue.
+		// So we don't want to ask for 5 blocks for every block it has given us.
+		this.requests = new LinkedBlockingQueue<Message.RequestMessage>(queueSize);
+		
+		if (passedCompletionRateInDropPiecesMode) {
+			logger.info("mode {}: Limited block request quque for peer {} to {}",
+					new Object[] {
+					TIMConfigurator.getOpMode(), this, queueSize
+			});
+		}
+		// *** ADDED BY CHIKO
+		
 		this.requestedPiece = piece;
 		this.lastRequestedOffset = 0;
 		this.requestNextBlocks();
@@ -526,39 +546,47 @@ public class SharingPeer extends Peer implements MessageListener {
 				
 				// *** ADDED BY CHIKO
 				
-				// we ignore ONLY if we're at we're half seeding with "drop new pieces" and we passed the completion rate
-				boolean shouldIgnorePiece = 
-					(TIMConfigurator.getOpMode() == OperationMode.HalfSeedDropNewPieces)
-					&& (this.torrent.getCompletionAsFraction() > TIMConfigurator.getHalfSeedCompletionRate());
+				// Should we keep track of the requested pieces and act when we
+				// get a piece we didn't ask for, or should we just stay
+				// greedy?
+				Message.PieceMessage piece = (Message.PieceMessage)msg;
+				Piece p = this.torrent.getPiece(piece.getPiece());
 				
+				// we ignore ONLY if we're at we're half seeding with "drop new pieces" and we passed the completion rate
+				boolean shouldIgnorePiece = didPassCompletionRateInDropPiecesMode();
+//					(TIMConfigurator.getOpMode() == OperationMode.HalfSeedDropNewPieces)
+//					&& (this.torrent.getCompletionAsFraction() > TIMConfigurator.getHalfSeedCompletionRate());
+								
 				if (shouldIgnorePiece) {
-					logger.info("{} mode: Received new piece from peer {} but passed specified completion rate [{}%/{}%]. Ignoring the piece!", 
+					logger.info("{} mode: Received new piece message from peer {} but passed specified completion rate [{}%/{}%]. Ignoring the message!", 
 							new Object[] {
 							TIMConfigurator.getOpMode(), 
 							this,
 							String.format("%.2f", this.torrent.getCompletion()),
-							String.format("%.2f", TIMConfigurator.getHalfSeedCompletionRate())
+							String.format("%.2f", TIMConfigurator.getHalfSeedCompletionRate()*100)
 					});
+					
+					// Removing the piece as interested, so we have a chance to ask it from other peers/this peer again.
+					this.torrent.removePieceFromRequested(p);
+					// Forgetting that we're in the context of downloading this piece
+					this.requestedPiece = null;
+					this.lastRequestedOffset = 0;
+					this.requests = null; // TODO: Consider sending Cancel messages and then this line isn't relevant and also the 2nd todo
+					// letting the world know we're open to new piece requests
+					this.firePeerReady();
+					
+					// TODO: consider limiting the request queue in this situation, so we don't request 5 more blocks for each block the peer has sent us.
 				}
 				else {
-					// TODO: check if just ignoring the entire message is OK
-					// what about requested (interested) pieces? will the peer keep sending us other pieces/blocks if we didn't request them?
-					// Do we have to keep sending the same requests over and over?
-					
-					// Record the incoming piece block.
-
-					// Should we keep track of the requested pieces and act when we
-					// get a piece we didn't ask for, or should we just stay
-					// greedy?
-					Message.PieceMessage piece = (Message.PieceMessage)msg;
-					Piece p = this.torrent.getPiece(piece.getPiece());
-
-					// Remove the corresponding request from the request to make
-					// room for next block requests.
-					this.removeBlockRequest(piece);
-					this.download.add(piece.getBlock().capacity());
 
 					try {
+						// Record the incoming piece block.
+
+						// Remove the corresponding request from the request to make
+						// room for next block requests.
+						this.removeBlockRequest(piece);
+						this.download.add(piece.getBlock().capacity());
+						
 						p.record(piece.getBlock(), piece.getOffset());
 
 						// If the block offset equals the piece size and the block
@@ -761,4 +789,12 @@ public class SharingPeer extends Peer implements MessageListener {
 			.append(suffix)
 			.toString();
 	}
+	
+	// *** ADDED BY CHIKO
+	private boolean didPassCompletionRateInDropPiecesMode() {
+		return (TIMConfigurator.getOpMode() == OperationMode.HalfSeedDropNewPieces)
+			&& (this.torrent.getCompletionAsFraction() > TIMConfigurator.getHalfSeedCompletionRate());	
+	}
+	
+	// *** ADDED BY CHIKO
 }
