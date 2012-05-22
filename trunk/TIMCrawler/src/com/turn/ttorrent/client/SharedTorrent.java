@@ -569,6 +569,13 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 				this.requestedPieces
 			});
 	}
+	
+	// *** ADDED BY CHIKO
+	public synchronized void removePieceFromRequested(Piece piece)	{
+		logger.info("Removing piece {} from requested pieces bitset", piece);
+		this.requestedPieces.set(piece.getIndex(), false);
+	}
+	// *** ADDED BY CHIKO
 
 	/** Peer ready handler.
 	 *
@@ -586,9 +593,10 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		interesting.andNot(this.completedPieces);
 		interesting.andNot(this.requestedPieces);
 
+		// TODO: Change back to trace
 		logger.trace("Peer {} is ready and has {} interesting piece(s).",
 			peer, interesting.cardinality());
-		logger.trace("Peer has {} piece(s), we have {} piece(s) and {} " +
+		logger.info("Peer has {} piece(s), we have {} piece(s) and {} " +
 			"outstanding request(s): {}.",
 			new Object[] {
 				peer.getAvailablePieces().cardinality(),
@@ -617,7 +625,8 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 					Math.min(choice.size(),
 						SharedTorrent.RAREST_PIECE_JITTER)));
 		this.requestedPieces.set(chosen.getIndex());
-		logger.trace("Requesting {} from {}, we now have {} " +
+		// TODO: Change back to trace
+		logger.info("Requesting {} from {}, we now have {} " +
 				" outstanding request(s): {}.",
 			new Object[] {
 				chosen,

@@ -106,8 +106,6 @@ public class Client extends Observable implements Runnable,
 		ERROR,
 		DONE;
 	};
-	
-	// TODO add modes
 
 	private static final String BITTORRENT_ID_PREFIX = "-TO0042-";//TODO change to our unique ID
 
@@ -872,9 +870,12 @@ public class Client extends Observable implements Runnable,
 					|| (TIMConfigurator.getOpMode() != OperationMode.NeverNotifySeeder);
 				
 				if (!sendHaveMessages) {
-					logger.info("NeverSeed mode: After piece completed, reached completion rate {}%/{}%. NOT sending HAVE messages to peers", 
+					logger.info("{} mode: After piece completed, reached completion rate {}%/{}%. NOT sending HAVE messages to peers",
+							new Object[] {
+							TIMConfigurator.getOpMode(),
 							String.format("%.2f", this.torrent.getCompletion()),
-							String.format("%.2f", TIMConfigurator.getHalfSeedCompletionRate()*100));
+							String.format("%.2f", TIMConfigurator.getHalfSeedCompletionRate()*100)
+							});
 				}
 				else {
 					// Send a HAVE message to all connected peers
