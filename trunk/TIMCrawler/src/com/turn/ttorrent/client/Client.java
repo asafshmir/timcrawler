@@ -38,8 +38,11 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.xml.DOMConfigurator;
 import org.slf4j.Logger;
@@ -47,7 +50,6 @@ import org.slf4j.LoggerFactory;
 
 import timc.common.TIMConfigurator;
 import timc.common.Utils.OperationMode;
-
 import timc.stats.logger.StatsLogger;
 
 import com.turn.ttorrent.bcodec.BEValue;
@@ -123,6 +125,7 @@ public class Client extends Observable implements Runnable,
 	private ConnectionHandler service;
 	private Announce announce;
 	private Reconnector reconnector;
+	private ThreadPoolExecutor connectionTp;
 	
 	/** Added when received from tracker, removed if initial connection failed.
 	 * 	Also contains peers which are currently handled by Reconnector, or that we don't want
@@ -165,6 +168,14 @@ public class Client extends Observable implements Runnable,
 		int retryInterval = Integer.parseInt(TIMConfigurator.getProperty("retry_interval"));
 		int numRetries = Integer.parseInt(TIMConfigurator.getProperty("num_retries"));
 		this.reconnector = this.new Reconnector(retryInterval, numRetries);
+		
+		// Initialize the connection thread pool
+		int poolSize = Integer.parseInt(TIMConfigurator.getProperty("tp_pool_size"));
+		int maxPoolSize = Integer.parseInt(TIMConfigurator.getProperty("tp_max_pool_size"));
+		long keepAliveTime = Integer.parseInt(TIMConfigurator.getProperty("tp_keep_alive_seconds"));
+		int queueSize = Integer.parseInt(TIMConfigurator.getProperty("tp_queue_size"));
+	    final ArrayBlockingQueue<Runnable> queue = new ArrayBlockingQueue<Runnable>(queueSize);
+		this.connectionTp = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAliveTime, TimeUnit.SECONDS, queue);
 		
 		// Initializing global configuration
 		TIMConfigurator.initialize();
@@ -366,6 +377,8 @@ public class Client extends Observable implements Runnable,
 				"and announce threads...");
 		this.service.stop();
 		this.announce.stop();
+		
+		this.connectionTp.shutdown();
 
 		// Close all peer connections
 		logger.debug("Closing all remaining peer connections...");
@@ -691,37 +704,15 @@ public class Client extends Observable implements Runnable,
 	}
 
 	
-	/** Process a peer's information obtained in an announce reply asynchronously.
-	 *
-	 * <p>
-	 * Start a new thread and call processAnnouncedPeer with the given parameters.
-	 * </p>
+	/** Create a new <code>PeerConnector</code> and execute it on the ThreadPool.
 	 *
 	 * @param peerId An optional peerId byte array.
 	 * @param ip The peer's IP address.
 	 * @param port The peer's port.
 	 */
 	private void processAnnouncedPeerAsynchronously(byte[] peerId, String ip, int port) {
-		
-		class PeerConnector implements Runnable {
-			private byte[] peerId;
-			private String ip;
-			private int port;
-			
-			public PeerConnector(byte[] peerId, String ip, int port) {
-				this.peerId = peerId;
-				this.ip = ip;
-				this.port = port;
-			}
-			
-			public void run() {
-				processAnnouncedPeer(this.peerId, this.ip, this.port);
-			}
-		}
-		
-		Thread connectThread = new Thread(new PeerConnector(peerId, ip, port));
-		connectThread.setName("bt-connect(" + ip + ")");
-		connectThread.start();
+		if (!this.stop)
+			this.connectionTp.execute(new PeerConnector(peerId, ip, port));
 	}
 	
 	
@@ -1030,26 +1021,23 @@ public class Client extends Observable implements Runnable,
 		}
 		
 		/**
-		 * Add peer to following list, this mean that we try to connect to him until success.
+		 * Add peer to following list - we'll try connecting him until success.
 		 * @param peer the peer to be followed
 		 */
 		public synchronized void followPeer(SharingPeer peer) {
-			if (immediateReconnect(peer))
-				return;
-			
-			// Reconnect failed, add to retry list
 			retryPeers.put(peer.hasPeerId()
 					? peer.getHexPeerId()
 					: peer.getHostIdentifier(), peer);
 		}
 		
-		private boolean immediateReconnect(SharingPeer peer) {
+		private boolean tryReconnect(SharingPeer peer) {
 			int maxTries = this.retries;
 			int i = 0;
+			
 			for (i = 0; i < maxTries; i++) {
 				logger.debug("Trying to reconnect with {}. Attemp number [{}/{}].", 
 						new Object[] {peer, i+1, maxTries});
-				if (service.connect(peer))
+				if (!peer.isBound() && service.connect(peer))
 					break;
 			}
 
@@ -1068,11 +1056,30 @@ public class Client extends Observable implements Runnable,
 		
 		private void retryAllPeers() {
 			Iterator<Map.Entry<String, SharingPeer>> it = this.retryPeers.entrySet().iterator();
-			while (it.hasNext() && !stop) {
-				if (immediateReconnect(it.next().getValue())) {
+			while (!stop &&it.hasNext()) {
+				if (tryReconnect(it.next().getValue())) {
 					it.remove();
 				}
 			}
+		}
+	}
+	
+	/** A Runnable object which is used for connecting to a given peer.
+	 * 
+	 */
+	private class PeerConnector implements Runnable {
+		private byte[] peerId;
+		private String ip;
+		private int port;
+		
+		public PeerConnector(byte[] peerId, String ip, int port) {
+			this.peerId = peerId;
+			this.ip = ip;
+			this.port = port;
+		}
+		
+		public void run() {
+			processAnnouncedPeer(this.peerId, this.ip, this.port);
 		}
 	}
 
