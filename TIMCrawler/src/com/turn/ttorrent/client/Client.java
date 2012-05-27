@@ -96,7 +96,7 @@ public class Client extends Observable implements Runnable,
 	 * 2*UNCHOKING_FREQUENCY seconds. */
 	private static final int OPTIMISTIC_UNCHOKE_ITERATIONS = 3;
 
-	private static final int RATE_COMPUTATION_ITERATIONS = 2;
+	private static final int RATE_COMPUTATION_ITERATIONS = 20; // Was 2
 	private static final int MAX_DOWNLOADERS_UNCHOKE = 4;
 	private static final int VOLUNTARY_OUTBOUND_CONNECTIONS = 20;
 
@@ -468,6 +468,9 @@ public class Client extends Observable implements Runnable,
 		for (SharingPeer peer : this.connected.values()) {
 			peer.getDLRate().reset();
 			peer.getULRate().reset();
+			// *** ADDED BY CHIKO
+			peer.getPeerTotalDLRate().reset();
+			// *** ADDED BY CHIKO
 		}
 	}
 
@@ -998,7 +1001,7 @@ public class Client extends Observable implements Runnable,
 		public Reconnector(int interval, int numRetries) {
 			this.interval = interval;
 			this.retries = numRetries;
-			this.retryPeers = new ConcurrentHashMap<String, SharingPeer>();;
+			this.retryPeers = new ConcurrentHashMap<String, SharingPeer>();
 		}
 		
 		public void start() {
