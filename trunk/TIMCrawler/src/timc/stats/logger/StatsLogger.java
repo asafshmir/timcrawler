@@ -58,17 +58,17 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		this.connectedPeers = connected;
 		this.crawlerPeerID = crawlerPeerID;
 		this.announce = announce;
-		this.announce.register(this);		
+		this.announce.register(this);	
+		this.statsWriter = new DBStatsWriter();		
+		this.statsWriter.initWriter();
+		this.sessionsMap = new ConcurrentHashMap<String, PeerStats>();	
 	}
 	
 	public void start() {		
 		logger.info("StatsLogger: Starting statsLogger for torrent" +
 				torrent.getName() + " with crawlerPeerID " +
-				this.crawlerPeerID + "...");
-				
-		this.statsWriter = new DBStatsWriter();		
-		this.statsWriter.initWriter();
-		this.sessionsMap = new ConcurrentHashMap<String, PeerStats>();	
+				this.crawlerPeerID + "...");		
+
 				
 		int numSeedsInTorrent = getNumSeedsInTorrent();
 		int numLeechInTorrent = getNumLeechInTorrent();
@@ -144,10 +144,15 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 
 	@Override
 	public void handlePeerDisconnected(SharingPeer peer) {
-		if (!sessionsMap.containsKey(peer.getHexPeerId()) || !sessionsMap.get(peer.getHexPeerId()).isConnected() || sessionsMap.get(peer.getHexPeerId()).getCurrentSessionNum() == 0){
-			logger.error("StatsLoger: error - peer with peerId: " + peer.getPeerId() + " disconnected, but we didn't have it as connected in sessionsMap, or didn't have it at all");
+		if (!sessionsMap.containsKey(peer.getHexPeerId()) || sessionsMap.get(peer.getHexPeerId()).getCurrentSessionNum() == 0){
+
+			logger.error("StatsLoger: error - peer with peerId: " + peer.getPeerId() + " disconnected, but we didn't have it in sessionsMap, or didn't have it at all");
 			return;
-		}		
+		}	
+		if (!sessionsMap.get(peer.getHexPeerId()).isConnected()){
+			logger.info("StatsLoger: peer with peerId: " + peer.getPeerId() + " disconnected, but we already disconnected it");
+			return;
+		}
 		PeerStats ps = sessionsMap.get(peer.getHexPeerId());
 		SessionRecord currentRec =  ps.getCurrentSessionRecord();
 		updateRecordOnDisconnection(currentRec, peer, false, getNumSeedsInTorrent(), getNumLeechInTorrent());
