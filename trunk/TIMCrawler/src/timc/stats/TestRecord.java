@@ -12,5 +12,6 @@ public class TestRecord {
 	public long totalSize;
 	public int pieceSize;
 	public int numPieces;
-
+	public int initialNumSeeders;
+	public int initialNumLeechers;
 }
