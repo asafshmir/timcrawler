@@ -442,6 +442,12 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 	}
 	// *** ADDED BY CHIKO
 
+	// *** ADDED BY CHIKO
+	public int getPieceLength() {
+		return this.pieceLength;
+	}
+	// *** ADDED BY CHIKO
+
 	/** Return a copy of the requested pieces bitset.
 	 */
 	public BitSet getRequestedPieces() {
