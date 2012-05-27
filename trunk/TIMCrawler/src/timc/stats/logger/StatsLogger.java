@@ -279,7 +279,7 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 	private SessionRecord createNewRecord(int numSeedsInTorrent,
 			int numLeechInTorrent, SharingPeer peer, int sessionSeqNum) {
 		SessionRecord rec = new SessionRecord();
-		rec.lastDownloadRate = peer.getDLRate();
+		rec.lastDownloadRate = peer.getDLRate().get();
 		rec.completionRate = (float)peer.getAvailablePieces().cardinality() / (float)torrent.getPieceCount();
 		rec.initialBitfield = peer.getAvailablePieces();
 		rec.initialNumOfLeeches = numLeechInTorrent;
@@ -301,10 +301,10 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 
 	private void updateRecordOnDisconnection(SessionRecord rec, SharingPeer peer, 
 			boolean isDisconnectedByCrawler, int numSeedsInTorrent, int numLeechInTorrent) {
-		rec.completionRate = peer.getAvailablePieces().cardinality() / torrent.getPieceCount();
+		rec.completionRate = (float)peer.getAvailablePieces().cardinality() / (float)torrent.getPieceCount();
 		rec.isDisconnectedByCrawler = isDisconnectedByCrawler;
 		rec.lastBitfield = peer.getAvailablePieces();
-		rec.lastDownloadRate = peer.getDLRate();
+		rec.lastDownloadRate = peer.getDLRate().get();
 		rec.lastNumOfLeeches = numLeechInTorrent;
 		rec.lastNumOfSeeds = numSeedsInTorrent;
 		rec.lastSeen = new Date();		

@@ -79,7 +79,8 @@ public class DBStatsWriter implements StatsWriter {
 		
 		try {
 			insertSessionRecord(testIdIntVal, session.crawlerPeerID, session.peerIdStr, session.peerIP, session.peerPort, 
-					new Timestamp(session.startTime.getTime()), new Timestamp(session.lastSeen.getTime()));
+					new Timestamp(session.startTime.getTime()), new Timestamp(session.lastSeen.getTime()),
+					session.lastDownloadRate, session.completionRate);
 		} catch (SQLException e) {
 			logger.error("Unable to insert a record into 'sessions' table: {}", e.getMessage());
 		}
@@ -106,7 +107,7 @@ public class DBStatsWriter implements StatsWriter {
 
 		PreparedStatement stmt = null;
 		String insertSessionSQL = "INSERT INTO `tim`.`tests` " +
-				"(`mode`, `mode_settings`, `start_time`, `info_hash`, `total_size`, `piece_size`, `num_pieces`) " +
+				"(mode, mode_settings, start_time, info_hash, total_size, piece_size, num_pieces) " +
 				"VALUES (?, ?, ?, ?, ?, ?, ?);";
 
 		try {   
@@ -135,7 +136,7 @@ public class DBStatsWriter implements StatsWriter {
 	protected void updateTestRecord(int testId, Timestamp endtTime) throws SQLException {
 
 		PreparedStatement stmt = null;
-		String insertSessionSQL = "UPDATE `tim`.`tests` SET `end_time`=? WHERE `id`=?";
+		String insertSessionSQL = "UPDATE `tim`.`tests` SET end_time=? WHERE id=?";
 
 		try {   
 			stmt = this.conn.prepareStatement(insertSessionSQL);
@@ -155,7 +156,7 @@ public class DBStatsWriter implements StatsWriter {
 		
 		int testId = 0;
 		PreparedStatement stmt = null;
-		String selectSessionNumSQL = "SELECT MAX(id) FROM `tim`.`tests` WHERE `info_hash`=?";
+		String selectSessionNumSQL = "SELECT MAX(id) FROM `tim`.`tests` WHERE info_hash=?";
 
 		try {
 			
@@ -175,25 +176,30 @@ public class DBStatsWriter implements StatsWriter {
 		return testId;
 	}
 	
-	protected void insertSessionRecord(int testId, String crawlerPeerID, String peerId, String peerIp, int peerPort, Timestamp startTime, Timestamp lastSeen) throws SQLException {
+	protected void insertSessionRecord(int testId, String crawlerPeerID, String peerId, String peerIp, int peerPort, 
+										Timestamp startTime, Timestamp lastSeen, float dlRate, float completionRate) throws SQLException {
 		
 		PreparedStatement stmt = null;
 		String insertSessionSQL = "INSERT INTO `tim`.`sessions` " +
-				"(`peer_ip`, `peer_port`, `peer_id`, `session_num`, `start_time`, `last_seen`, `fk_test_id`, `crawler_peer_id`) " +
-				"VALUES (?, ?, ?, ?, ?, ?, ?, ?);";
+				"(fk_test_id, crawler_peer_id, peer_id, peer_ip, peer_port, session_num, start_time, last_seen, " +
+				"last_download_rate, completion_rate) " +
+				"VALUES (?,?,?,?,?,?,?,?,?,?);";
 
 		int sessionNum = getNextSessionNum(peerId, peerIp, peerPort, testId);
 		
 		try {   
 			stmt = this.conn.prepareStatement(insertSessionSQL);
-			stmt.setString(1, peerIp);
-	        stmt.setInt(2, peerPort);
-	        stmt.setString(3, peerId);
-	        stmt.setInt(4, sessionNum);
-	        stmt.setTimestamp(5, startTime);
-	        stmt.setTimestamp(6, lastSeen);
-	        stmt.setInt(7, testId);
-	        stmt.setString(8, crawlerPeerID);
+			stmt.setInt(1, testId);
+			stmt.setString(2, crawlerPeerID);
+			stmt.setString(3, peerId);
+			stmt.setString(4, peerIp);
+	        stmt.setInt(5, peerPort);
+	        stmt.setInt(6, sessionNum);
+	        stmt.setTimestamp(7, startTime);
+	        stmt.setTimestamp(8, lastSeen);
+	        stmt.setFloat(9, dlRate);
+	        stmt.setFloat(10, completionRate);
+	        
 	        stmt.executeUpdate();
 	        
 	    } catch (SQLException e) {
@@ -207,7 +213,7 @@ public class DBStatsWriter implements StatsWriter {
 		
 		PreparedStatement stmt = null;
 		String insertSessionSQL = "INSERT INTO `tim`.`sessions` " +
-				"(`peer_ip`, `peer_port`, `peer_id`, `session_num`, `last_seen_by_tracker`, `fk_test_id`, `crawler_peer_id`) " +
+				"(peer_ip, peer_port, peer_id, session_num, last_seen_by_tracker, fk_test_id, crawler_peer_id) " +
 				"VALUES (?, ?, ?, ?, ?, ?, ?) " +
 				"ON DUPLICATE KEY UPDATE `last_seen_by_tracker` = ?;";
 
@@ -237,7 +243,7 @@ public class DBStatsWriter implements StatsWriter {
 		int sessionNum = 0;
 		PreparedStatement stmt = null;
 		String selectSessionNumSQL = "SELECT MAX(session_num) FROM `tim`.`sessions` " +
-									"WHERE `peer_ip`=? and `peer_port`=? and `peer_id`=? and `fk_test_id`=?";
+									"WHERE peer_ip=? and peer_port=? and peer_id=? and fk_test_id=?";
 		
 		try {
 			
