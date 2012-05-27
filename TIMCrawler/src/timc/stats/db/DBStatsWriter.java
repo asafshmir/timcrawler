@@ -80,7 +80,7 @@ public class DBStatsWriter implements StatsWriter {
 		try {
 			insertSessionRecord(testIdIntVal, session.crawlerPeerID, session.peerIdStr, session.peerIP, session.peerPort, 
 					new Timestamp(session.startTime.getTime()), new Timestamp(session.lastSeen.getTime()),
-					session.lastDownloadRate, session.completionRate);
+					session.totalDownloadRate, session.completionRate);
 		} catch (SQLException e) {
 			logger.error("Unable to insert a record into 'sessions' table: {}", e.getMessage());
 		}
@@ -177,12 +177,12 @@ public class DBStatsWriter implements StatsWriter {
 	}
 	
 	protected void insertSessionRecord(int testId, String crawlerPeerID, String peerId, String peerIp, int peerPort, 
-										Timestamp startTime, Timestamp lastSeen, float dlRate, float completionRate) throws SQLException {
+										Timestamp startTime, Timestamp lastSeen, float totalDLRate, float completionRate) throws SQLException {
 		
 		PreparedStatement stmt = null;
 		String insertSessionSQL = "INSERT INTO `tim`.`sessions` " +
 				"(fk_test_id, crawler_peer_id, peer_id, peer_ip, peer_port, session_num, start_time, last_seen, " +
-				"last_download_rate, completion_rate) " +
+				"total_download_rate, completion_rate) " +
 				"VALUES (?,?,?,?,?,?,?,?,?,?);";
 
 		int sessionNum = getNextSessionNum(peerId, peerIp, peerPort, testId);
@@ -197,7 +197,7 @@ public class DBStatsWriter implements StatsWriter {
 	        stmt.setInt(6, sessionNum);
 	        stmt.setTimestamp(7, startTime);
 	        stmt.setTimestamp(8, lastSeen);
-	        stmt.setFloat(9, dlRate);
+	        stmt.setFloat(9, totalDLRate);
 	        stmt.setFloat(10, completionRate);
 	        
 	        stmt.executeUpdate();

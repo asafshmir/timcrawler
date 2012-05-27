@@ -19,6 +19,7 @@ public class SessionRecord {
 	public BitSet initialBitfield;
 	public BitSet lastBitfield;
 	public float lastDownloadRate;
+	public float totalDownloadRate;
 	// TODO consider how to track average DR. I think the value is average anyway
 	// public Rate averageDownloadRate;
 	public float completionRate;

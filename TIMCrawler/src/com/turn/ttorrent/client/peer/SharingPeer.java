@@ -97,7 +97,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 	private Set<PeerActivityListener> listeners;
 
-	public boolean wasBound = false;
+	public boolean wasBound = false; // TODO remove this
 	
 	/** Create a new sharing peer on a given torrent.
 	 *
@@ -133,7 +133,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	}
 	
 	// *** ADDED BY CHIKO
-	public Rate getPeerEstimatedDLRate() {
+	public Rate getPeerTotalDLRate() {
 		return this.peerTotalDownload;
 	}
 	// *** ADDED BY CHIKO
