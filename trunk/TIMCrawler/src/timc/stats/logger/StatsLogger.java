@@ -79,7 +79,7 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		testRecord.startTime = new Date();
 		testRecord.infoHash = this.torrent.getHexInfoHash();
 		testRecord.totalSize = this.torrent.getSize();
-		testRecord.pieceSize = Math.round(this.torrent.getSize() / this.torrent.getPieceCount());
+		testRecord.pieceSize = this.torrent.getPieceLength();
 		testRecord.numPieces = this.torrent.getPieceCount();
 		
 		this.testId = this.statsWriter.writeTestStats(this.testRecord);	
@@ -279,7 +279,7 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 	private SessionRecord createNewRecord(int numSeedsInTorrent,
 			int numLeechInTorrent, SharingPeer peer, int sessionSeqNum) {
 		SessionRecord rec = new SessionRecord();
-		rec.lastDownloadRate = peer.getDLRate().get();
+		rec.totalDownloadRate = peer.getPeerTotalDLRate().get();
 		rec.completionRate = (float)peer.getAvailablePieces().cardinality() / (float)torrent.getPieceCount();
 		rec.initialBitfield = peer.getAvailablePieces();
 		rec.initialNumOfLeeches = numLeechInTorrent;
@@ -304,7 +304,7 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		rec.completionRate = (float)peer.getAvailablePieces().cardinality() / (float)torrent.getPieceCount();
 		rec.isDisconnectedByCrawler = isDisconnectedByCrawler;
 		rec.lastBitfield = peer.getAvailablePieces();
-		rec.lastDownloadRate = peer.getDLRate().get();
+		rec.totalDownloadRate = peer.getPeerTotalDLRate().get() / (float)1024;
 		rec.lastNumOfLeeches = numLeechInTorrent;
 		rec.lastNumOfSeeds = numSeedsInTorrent;
 		rec.lastSeen = new Date();		
