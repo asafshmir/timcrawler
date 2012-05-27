@@ -92,6 +92,7 @@ public class SharingPeer extends Peer implements MessageListener {
 	private Rate download;
 	// *** ADDED BY CHIKO
 	private Rate peerTotalDownload;
+	private Rate peerLastDownload;
 	// *** ADDED BY CHIKO
 	private Rate upload;
 
@@ -135,6 +136,10 @@ public class SharingPeer extends Peer implements MessageListener {
 	// *** ADDED BY CHIKO
 	public Rate getPeerTotalDLRate() {
 		return this.peerTotalDownload;
+	}
+	
+	public Rate getPeerLastDLRate() {
+		return this.peerLastDownload;
 	}
 	// *** ADDED BY CHIKO
 
@@ -264,6 +269,8 @@ public class SharingPeer extends Peer implements MessageListener {
 		// *** ADDED BY CHIKO
 		this.peerTotalDownload = new Rate();
 		this.peerTotalDownload.reset();
+		this.peerLastDownload = new Rate();
+		this.peerLastDownload.reset();
 		// *** ADDED BY CHIKO
 
 		this.upload = new Rate();
@@ -495,7 +502,7 @@ public class SharingPeer extends Peer implements MessageListener {
 				
 				// *** ADDED BY CHIKO
 				// updating that the peer has downloaded an entire piece
-				updateTotalDLRate(this.torrent.getPieceLength());
+				updatePeerDLRate(this.torrent.getPieceLength());
 				// *** ADDED BY CHIKO
 
 				this.firePieceAvailabity(havePiece);
@@ -670,8 +677,9 @@ public class SharingPeer extends Peer implements MessageListener {
 	}
 
 	// *** ADDED BY CHIKO
-	private void updateTotalDLRate(long count) {
+	private void updatePeerDLRate(long count) {
 		this.peerTotalDownload.add(count);
+		this.peerLastDownload.add(count);		
 	}
 	// *** ADDED BY CHIKO
 
