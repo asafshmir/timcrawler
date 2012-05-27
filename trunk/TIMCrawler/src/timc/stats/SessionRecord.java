@@ -23,7 +23,7 @@ public class SessionRecord {
 	public Rate lastDownloadRate;
 	// TODO consider how to track average DR. I think the value is average anyway
 	// public Rate averageDownloadRate;
-	public double completionRate;
+	public float completionRate;
 	public int initialNumOfSeeds;
 	public int lastNumOfSeeds;
 	public int initialNumOfLeeches;

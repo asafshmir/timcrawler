@@ -248,6 +248,7 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 			PeerStats ps = new PeerStats();
 			ps.setZeroSessionRecord(rec0);
 			ps.setBasePeer(basePeer);
+			sessionsMap.put(peerId, ps);
 		}				
 	}
 	
@@ -279,7 +280,7 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 			int numLeechInTorrent, SharingPeer peer, int sessionSeqNum) {
 		SessionRecord rec = new SessionRecord();
 		rec.lastDownloadRate = peer.getDLRate();
-		rec.completionRate = peer.getAvailablePieces().cardinality() / torrent.getPieceCount();
+		rec.completionRate = (float)peer.getAvailablePieces().cardinality() / (float)torrent.getPieceCount();
 		rec.initialBitfield = peer.getAvailablePieces();
 		rec.initialNumOfLeeches = numLeechInTorrent;
 		rec.initialNumOfSeeds = numSeedsInTorrent;
