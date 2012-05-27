@@ -95,7 +95,7 @@ public class TIMCrawlerCLI {
 		this.cli = new NaturalCLI(cs);		
 	}
 	
-	public void startCLI() throws IOException, ExecutionException {
+	public void startCLI() throws IOException {
 		
 		// Start the client
 		this.client.share();
@@ -109,7 +109,11 @@ public class TIMCrawlerCLI {
 		do {
 			System.out.print("> ");
 			String command = br.readLine();
-			this.cli.execute(command);
+			try {
+				this.cli.execute(command);
+			} catch (ExecutionException e) {
+				// ignore
+			}
 		} while (true);
 	}
 }
