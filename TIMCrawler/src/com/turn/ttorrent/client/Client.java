@@ -336,10 +336,10 @@ public class Client extends Observable implements Runnable,
 			this.setState(ClientState.SHARING);
 		}
 
+		this.statsLogger.start();
 		this.announce.start();
 		this.service.start();
 		this.reconnector.start();
-		this.statsLogger.start();
 
 		int optimisticIterations = 0;
 		int rateComputationIterations = 0;
@@ -469,7 +469,7 @@ public class Client extends Observable implements Runnable,
 			peer.getDLRate().reset();
 			peer.getULRate().reset();
 			// *** ADDED BY CHIKO
-			peer.getPeerTotalDLRate().reset();
+			peer.getPeerLastDLRate().reset();
 			// *** ADDED BY CHIKO
 		}
 	}
