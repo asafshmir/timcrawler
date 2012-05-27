@@ -1,9 +1,7 @@
 package timc.stats;
 
-import java.util.Date;
 import java.util.BitSet;
-
-import com.turn.ttorrent.client.peer.Rate;
+import java.util.Date;
 
 public class SessionRecord {
 	
@@ -20,7 +18,7 @@ public class SessionRecord {
 	// public Object testId;
 	public BitSet initialBitfield;
 	public BitSet lastBitfield;
-	public Rate lastDownloadRate;
+	public float lastDownloadRate;
 	// TODO consider how to track average DR. I think the value is average anyway
 	// public Rate averageDownloadRate;
 	public float completionRate;
