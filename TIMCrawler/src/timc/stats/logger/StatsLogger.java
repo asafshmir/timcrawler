@@ -61,7 +61,9 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		this.announce.register(this);	
 		this.statsWriter = new DBStatsWriter();		
 		this.statsWriter.initWriter();
-		this.sessionsMap = new ConcurrentHashMap<String, PeerStats>();	
+		this.sessionsMap = new ConcurrentHashMap<String, PeerStats>();
+		
+		this.testRecord = new TestRecord();
 	}
 	
 	public void start() {		
@@ -69,18 +71,20 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 				torrent.getName() + " with crawlerPeerID " +
 				this.crawlerPeerID + "...");		
 
-				
 		int numSeedsInTorrent = getNumSeedsInTorrent();
 		int numLeechInTorrent = getNumLeechInTorrent();
 		
 		// write the general test record, and get testId while doing so
-		this.testRecord = new TestRecord();
-		testRecord.mode = TIMConfigurator.getOpMode().getMode();
-		testRecord.startTime = new Date();
-		testRecord.infoHash = this.torrent.getHexInfoHash();
-		testRecord.totalSize = this.torrent.getSize();
-		testRecord.pieceSize = this.torrent.getPieceLength();
-		testRecord.numPieces = this.torrent.getPieceCount();
+		this.testRecord.mode = TIMConfigurator.getOpMode().getMode();
+		this.testRecord.modeSettings = String.valueOf(TIMConfigurator.getHalfSeedCompletionRate());
+		this.testRecord.startTime = new Date();
+		this.testRecord.endTime = this.testRecord.startTime;
+		this.testRecord.infoHash = this.torrent.getHexInfoHash();
+		this.testRecord.totalSize = this.torrent.getSize();
+		this.testRecord.pieceSize = this.torrent.getPieceLength();
+		this.testRecord.numPieces = this.torrent.getPieceCount();
+		this.testRecord.initialNumSeeders = numSeedsInTorrent;
+		this.testRecord.initialNumLeechers = numLeechInTorrent;
 		
 		this.testId = this.statsWriter.writeTestStats(this.testRecord);	
 		logger.info("StatsLogger: writing to TestStats table, with testRecord: " + testRecord.toString());
@@ -178,10 +182,20 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 				// No peers returned by the tracker. Apparently we're alone on this one for now.
 				return;
 			}	
+			
+			// Whether this is the first time we get the number of seeders and leechers
+			boolean updateNumSeeders = (this.numSeeds == 0);
+			
 			if (answer.containsKey("complete"))
 				this.numSeeds = answer.get("complete").getInt();
 			if (answer.containsKey("incomplete"))
-				this.numLeeches = answer.get("incomplete").getInt();						
+				this.numLeeches = answer.get("incomplete").getInt();
+			
+			// Update number of seeders and leechers only if this is the first time we get them
+			this.testRecord.initialNumLeechers = this.numLeeches;
+			this.testRecord.initialNumSeeders = this.numSeeds;
+			if (updateNumSeeders)
+				this.statsWriter.updateTestStats(this.testId, this.testRecord);
 
 			try { 
 				List<BEValue> peers = answer.get("peers").getList();
@@ -279,7 +293,8 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 	private SessionRecord createNewRecord(int numSeedsInTorrent,
 			int numLeechInTorrent, SharingPeer peer, int sessionSeqNum) {
 		SessionRecord rec = new SessionRecord();
-		rec.totalDownloadRate = peer.getPeerTotalDLRate().get();
+		rec.totalDownloadRate = peer.getPeerTotalDLRate().get() / (float)1024;
+		rec.lastDownloadRate = peer.getPeerLastDLRate().get() / (float)1024;
 		rec.completionRate = (float)peer.getAvailablePieces().cardinality() / (float)torrent.getPieceCount();
 		rec.initialBitfield = peer.getAvailablePieces();
 		rec.initialNumOfLeeches = numLeechInTorrent;
@@ -305,6 +320,7 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		rec.isDisconnectedByCrawler = isDisconnectedByCrawler;
 		rec.lastBitfield = peer.getAvailablePieces();
 		rec.totalDownloadRate = peer.getPeerTotalDLRate().get() / (float)1024;
+		rec.lastDownloadRate = peer.getPeerLastDLRate().get() / (float)1024;
 		rec.lastNumOfLeeches = numLeechInTorrent;
 		rec.lastNumOfSeeds = numSeedsInTorrent;
 		rec.lastSeen = new Date();		
