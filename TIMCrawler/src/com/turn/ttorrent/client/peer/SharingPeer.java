@@ -97,8 +97,6 @@ public class SharingPeer extends Peer implements MessageListener {
 	private Rate upload;
 
 	private Set<PeerActivityListener> listeners;
-
-	public boolean wasBound = false; // TODO remove this
 	
 	/** Create a new sharing peer on a given torrent.
 	 *
@@ -275,8 +273,6 @@ public class SharingPeer extends Peer implements MessageListener {
 
 		this.upload = new Rate();
 		this.upload.reset();
-		
-		this.wasBound = true;
 	}
 
 	/** Tells whether this peer as an active connection through a peer
@@ -803,14 +799,6 @@ public class SharingPeer extends Peer implements MessageListener {
 	}
 
 	public String toString() {
-		String suffix = "";
-		
-		synchronized (this.availablePieces) {
-			double per = (double)this.availablePieces.cardinality() / (double)this.torrent.getPieceCount();
-			if (this.wasBound && (per < 0.95))
-				suffix = " $$$Interseting$$$";
-		}
-		
 		return new StringBuilder(super.toString())
 			.append(" [")
 			.append((this.choked ? "C" : "c"))
@@ -819,7 +807,6 @@ public class SharingPeer extends Peer implements MessageListener {
 			.append((this.choking ? "C" : "c"))
 			.append((this.interesting ? "I" : "i"))
 			.append("]")
-			.append(suffix)
 			.toString();
 	}
 	
