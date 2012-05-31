@@ -1,11 +1,15 @@
 package timc.stats.db;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.util.BitSet;
 import java.util.Properties;
 
 import org.slf4j.Logger;
@@ -45,7 +49,7 @@ public class DBStatsWriter implements StatsWriter {
 		int testId = 0;
 		
 		try {
-			testId = insertTestRecord(test.mode, test.modeSettings, new Timestamp(test.startTime.getTime()),
+			testId = insertTestRecord(test.crawlerPeerID, test.mode, test.modeSettings, new Timestamp(test.startTime.getTime()),
 					test.infoHash, test.totalSize, test.pieceSize, test.numPieces, test.initialNumSeeders, test.initialNumLeechers);
 		} catch (SQLException e) {
 			logger.error("Unable to insert a record into 'tests' table: {}", e.getMessage());
@@ -76,13 +80,22 @@ public class DBStatsWriter implements StatsWriter {
 			return;
 
 		int testIdIntVal = Integer.parseInt(testId);
+		String peerClientStr = session.peerIdStr.substring(0, 8);
+		InputStream initialBitfieldIs = toInputStream(session.initialBitfield);
+		InputStream lastlBitfieldIs = toInputStream(session.lastBitfield);
 		
 		try {
-			insertSessionRecord(testIdIntVal, session.crawlerPeerID, session.peerIdStr, session.peerIP, session.peerPort, 
+			insertSessionRecord(testIdIntVal, session.peerIdHex, session.peerIP, session.peerPort, 
 					new Timestamp(session.startTime.getTime()), new Timestamp(session.lastSeen.getTime()),
-					session.totalDownloadRate, session.lastDownloadRate, session.completionRate);
+					session.totalDownloadRate, session.lastDownloadRate, session.completionRate,
+					peerClientStr, initialBitfieldIs, lastlBitfieldIs);
 		} catch (SQLException e) {
 			logger.error("Unable to insert a record into 'sessions' table: {}", e.getMessage());
+		} finally {
+			try {
+				initialBitfieldIs.close();
+				lastlBitfieldIs.close();
+			} catch (IOException e) { /* ignore */ }
 		}
 	}
 	
@@ -95,32 +108,33 @@ public class DBStatsWriter implements StatsWriter {
 		int testIdIntVal = Integer.parseInt(testId);
 		
 		try {
-			insertTrackerSessionRecord(testIdIntVal, session.crawlerPeerID, session.peerIdStr, session.peerIP, 
+			insertTrackerSessionRecord(testIdIntVal, session.peerIdStr, session.peerIP, 
 					session.peerPort, new Timestamp(session.lastSeenByTracker.getTime()));
 		} catch (SQLException e) {
 			logger.error("Unable to insert a record into 'sessions' table: {}", e.getMessage());
 		}		
 	}
 	
-	protected int insertTestRecord(int mode, String modeSettings, Timestamp startTime, String infoHash,
+	protected int insertTestRecord(String crawlerId, int mode, String modeSettings, Timestamp startTime, String infoHash,
 			long totalSize, int pieceSize, int numPieces, int numSeeders, int numLeechers) throws SQLException {
 
 		PreparedStatement stmt = null;
 		String insertSessionSQL = "INSERT INTO `tim`.`tests` " +
-				"(mode, mode_settings, start_time, info_hash, total_size, piece_size, num_pieces, num_seeders, num_leechers) " +
-				"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);";
+				"(crawler_id, mode, mode_settings, start_time, info_hash, total_size, piece_size, num_pieces, num_seeders, num_leechers) " +
+				"VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);";
 
 		try {   
 			stmt = this.conn.prepareStatement(insertSessionSQL);
-			stmt.setInt(1, mode);
-			stmt.setString(2, modeSettings);
-			stmt.setTimestamp(3, startTime);
-	        stmt.setString(4, infoHash);
-	        stmt.setLong(5, totalSize);
-	        stmt.setInt(6, pieceSize);
-	        stmt.setInt(7, numPieces);
-	        stmt.setInt(8, numSeeders);
-	        stmt.setInt(9, numLeechers);
+			stmt.setString(1, crawlerId);
+			stmt.setInt(2, mode);
+			stmt.setString(3, modeSettings);
+			stmt.setTimestamp(4, startTime);
+	        stmt.setString(5, infoHash);
+	        stmt.setLong(6, totalSize);
+	        stmt.setInt(7, pieceSize);
+	        stmt.setInt(8, numPieces);
+	        stmt.setInt(9, numSeeders);
+	        stmt.setInt(10, numLeechers);
 
 	        stmt.executeUpdate();
 	        
@@ -184,30 +198,34 @@ public class DBStatsWriter implements StatsWriter {
 		return testId;
 	}
 	
-	protected void insertSessionRecord(int testId, String crawlerPeerID, String peerId, String peerIp, int peerPort, 
-										Timestamp startTime, Timestamp lastSeen, float totalDLRate, float lastDLRate, float completionRate) throws SQLException {
+	protected void insertSessionRecord(int testId, String hexPeerId, String peerIp, int peerPort, 
+										Timestamp startTime, Timestamp lastSeen, float totalDLRate, float lastDLRate,
+										float completionRate, String peerClientStr, InputStream initialBitfield, InputStream lastBitfield) throws SQLException {
 		
 		PreparedStatement stmt = null;
 		String insertSessionSQL = "INSERT INTO `tim`.`sessions` " +
-				"(fk_test_id, crawler_peer_id, peer_id, peer_ip, peer_port, session_num, start_time, last_seen, " +
-				"total_download_rate, last_download_rate, completion_rate) " +
-				"VALUES (?,?,?,?,?,?,?,?,?,?,?);";
+				"(fk_test_id, peer_id, peer_ip, peer_port, session_num, start_time, last_seen, " +
+				"total_download_rate, last_download_rate, completion_rate, peer_client, " +
+				"initial_bitfield, last_bitfield) " +
+				"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);";
 
-		int sessionNum = getNextSessionNum(peerId, peerIp, peerPort, testId);
+		int sessionNum = getNextSessionNum(hexPeerId, peerIp, peerPort, testId);
 		
 		try {   
 			stmt = this.conn.prepareStatement(insertSessionSQL);
 			stmt.setInt(1, testId);
-			stmt.setString(2, crawlerPeerID);
-			stmt.setString(3, peerId);
-			stmt.setString(4, peerIp);
-	        stmt.setInt(5, peerPort);
-	        stmt.setInt(6, sessionNum);
-	        stmt.setTimestamp(7, startTime);
-	        stmt.setTimestamp(8, lastSeen);
-	        stmt.setFloat(9, totalDLRate);
-	        stmt.setFloat(10, lastDLRate);
-	        stmt.setFloat(11, completionRate);
+			stmt.setString(2, hexPeerId);
+			stmt.setString(3, peerIp);
+	        stmt.setInt(4, peerPort);
+	        stmt.setInt(5, sessionNum);
+	        stmt.setTimestamp(6, startTime);
+	        stmt.setTimestamp(7, lastSeen);
+	        stmt.setFloat(8, totalDLRate);
+	        stmt.setFloat(9, lastDLRate);
+	        stmt.setFloat(10, completionRate);
+	        stmt.setString(11, peerClientStr);
+	        stmt.setBlob(12, initialBitfield);
+	        stmt.setBlob(13, lastBitfield);
 	        
 	        stmt.executeUpdate();
 	        
@@ -218,12 +236,12 @@ public class DBStatsWriter implements StatsWriter {
 	    }
 	}
 	
-	protected void insertTrackerSessionRecord(int testId, String crawlerPeerID, String peerId, String peerIp, int peerPort, Timestamp lastSeenByTracker) throws SQLException {
+	protected void insertTrackerSessionRecord(int testId, String peerId, String peerIp, int peerPort, Timestamp lastSeenByTracker) throws SQLException {
 		
 		PreparedStatement stmt = null;
 		String insertSessionSQL = "INSERT INTO `tim`.`sessions` " +
-				"(peer_ip, peer_port, peer_id, session_num, last_seen_by_tracker, fk_test_id, crawler_peer_id) " +
-				"VALUES (?, ?, ?, ?, ?, ?, ?) " +
+				"(peer_ip, peer_port, peer_id, session_num, last_seen_by_tracker, fk_test_id) " +
+				"VALUES (?, ?, ?, ?, ?, ?) " +
 				"ON DUPLICATE KEY UPDATE `last_seen_by_tracker` = ?;";
 
 		int sessionNum = 0;
@@ -236,8 +254,7 @@ public class DBStatsWriter implements StatsWriter {
 	        stmt.setInt(4, sessionNum);
 	        stmt.setTimestamp(5, lastSeenByTracker);
 	        stmt.setInt(6, testId);
-	        stmt.setString(7, crawlerPeerID);
-	        stmt.setTimestamp(8, lastSeenByTracker);
+	        stmt.setTimestamp(7, lastSeenByTracker);
 	        stmt.executeUpdate();
 	        
 	    } catch (SQLException e) {
@@ -314,5 +331,15 @@ public class DBStatsWriter implements StatsWriter {
 		} catch (SQLException e) {
 			logger.error("Unable to close DB connection: {}", e.getMessage());
 		}
+	}
+	
+	public static InputStream toInputStream(BitSet bits) {
+		byte[] bytes = new byte[(bits.length()+7)/8 ];
+		for (int i = 0; i < bits.length(); i++) {
+			if (bits.get(i)) {
+				bytes[i/8] |= 1<<(i%8);
+			}
+		}
+		return new ByteArrayInputStream(bytes);
 	}
 }

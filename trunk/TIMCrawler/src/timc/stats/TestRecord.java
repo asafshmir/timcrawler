@@ -4,6 +4,7 @@ import java.util.Date;
 
 public class TestRecord {
 	
+	public String crawlerPeerID;
 	public int mode;
 	public String modeSettings;
 	public Date startTime;
