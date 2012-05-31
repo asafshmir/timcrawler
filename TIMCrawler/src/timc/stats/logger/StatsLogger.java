@@ -85,6 +85,7 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		this.testRecord.numPieces = this.torrent.getPieceCount();
 		this.testRecord.initialNumSeeders = numSeedsInTorrent;
 		this.testRecord.initialNumLeechers = numLeechInTorrent;
+		this.testRecord.crawlerPeerID = this.crawlerPeerID;
 		
 		this.testId = this.statsWriter.writeTestStats(this.testRecord);	
 		logger.info("StatsLogger: writing to TestStats table, with testRecord: " + testRecord.toString());
@@ -106,10 +107,19 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 	
 	public void stop() {
 		
-		for (PeerStats ps : sessionsMap.values()){
-			// write all zero records that have been initialized (thru announce responce handler
-			if (ps.getZeroSessionRecord() != null){
-				SessionRecord zeroRec = ps.getZeroSessionRecord();
+		for (PeerStats ps : sessionsMap.values()) {
+			
+			SessionRecord zeroRec = null;
+			SessionRecord currentRec = null;
+			
+			synchronized(ps) {
+				zeroRec = ps.getZeroSessionRecord();
+				if (ps.isConnected())
+					currentRec = ps.getCurrentSessionRecord();	
+			}
+			
+			// write all zero records that have been initialized (thru announce response handler
+			if (zeroRec != null) {
 				try {
 					this.statsWriter.writeTrackerSessionStats(testId, zeroRec);	
 					logger.info("StatsLogger: stop method was invoked. Writing to Sessions table, for testID: "
@@ -117,11 +127,10 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 				} catch (Exception e) {
 					logger.error("StatsLogger error: {}", e.getMessage(), e);
 				}	
-			}			
+			}
 			
 			// write all last records of peers who haven't been marked as disconnected
-			if (ps.isConnected()){
-				SessionRecord currentRec =  ps.getCurrentSessionRecord();
+			if (currentRec != null) {
 				updateRecordOnDisconnection(currentRec, ps.getSharingPeer(), true, getNumSeedsInTorrent(), getNumLeechInTorrent());
 				try {
 					this.statsWriter.writeSessionStats(testId, currentRec);	
@@ -129,8 +138,8 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 							+ " with session record: " + currentRec.toString());
 				} catch (Exception e) {
 					logger.error("{}", e.getMessage(), e);
-				}				
-			}			
+				}
+			}
 		}		
 		this.testRecord.endTime = new Date();
 		this.statsWriter.updateTestStats(this.testId, this.testRecord);
@@ -149,18 +158,21 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 	@Override
 	public void handlePeerDisconnected(SharingPeer peer) {
 		if (!sessionsMap.containsKey(peer.getHexPeerId()) || sessionsMap.get(peer.getHexPeerId()).getCurrentSessionNum() == 0){
-
 			logger.error("StatsLoger: error - peer with peerId: " + peer.getPeerId() + " disconnected, but we didn't have it in sessionsMap, or didn't have it at all");
 			return;
-		}	
-		if (!sessionsMap.get(peer.getHexPeerId()).isConnected()){
-			logger.info("StatsLoger: peer with peerId: " + peer.getPeerId() + " disconnected, but we already disconnected it");
-			return;
 		}
+		
 		PeerStats ps = sessionsMap.get(peer.getHexPeerId());
-		SessionRecord currentRec =  ps.getCurrentSessionRecord();
+		SessionRecord currentRec;
+		synchronized (ps) {
+			if (!ps.isConnected())
+				return;
+			currentRec = ps.getCurrentSessionRecord();
+			ps.setConnected(false);
+			ps.setCurrentSessionRecord(null);
+		}
+		
 		updateRecordOnDisconnection(currentRec, peer, false, getNumSeedsInTorrent(), getNumLeechInTorrent());
-		ps.setConnected(false);
 		try {
 			this.statsWriter.writeSessionStats(testId, currentRec);
 			logger.info("StatsLogger: the following peer has disconnected. Writing to Sessions table, for testID: " + testId 
@@ -168,7 +180,6 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		} catch (Exception e) {
 			logger.error("StatsLogger error: {}", e.getMessage(), e);
 		}
-		ps.setCurrentSessionRecord(null);
 	}
 
 	@Override
@@ -275,7 +286,6 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 
 	private SessionRecord createZeroRecord(String ip, int port, Peer basePeer) {
 		SessionRecord rec0 = new SessionRecord();		
-		rec0.crawlerPeerID = this.crawlerPeerID;
 		rec0.initialNumOfLeeches = this.getNumLeechInTorrent();
 		rec0.initialNumOfSeeds = this.getNumSeedsInTorrent();
 		rec0.peerIdHex = basePeer.getHexPeerId();
@@ -299,7 +309,6 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		rec.initialBitfield = peer.getAvailablePieces();
 		rec.initialNumOfLeeches = numLeechInTorrent;
 		rec.initialNumOfSeeds = numSeedsInTorrent;
-		rec.crawlerPeerID = this.crawlerPeerID;
 		rec.lastNumOfLeeches = numLeechInTorrent;
 		rec.lastNumOfSeeds = numSeedsInTorrent;
 		rec.lastBitfield = peer.getAvailablePieces();
@@ -352,12 +361,14 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		if (sessionsMap.containsKey(peer.getHexPeerId())) {  
 			// means we already have some record of this peer - a regular record and/or a zero record	
 			PeerStats ps = sessionsMap.get(peer.getHexPeerId());
-			ps.setConnected(true);
-			ps.setCurrentSessionNum(ps.getCurrentSessionNum() + 1);
-			SessionRecord newRecord = createNewRecord(numSeedsInTorrent, numLeechInTorrent, peer,
-					ps.getCurrentSessionNum());
-			ps.setCurrentSessionRecord(newRecord);
-			ps.setSharingPeer(peer);  // this line is necessary in case we only had a zero record for this peerId			
+			synchronized (ps) {
+				ps.setConnected(true);
+				ps.setCurrentSessionNum(ps.getCurrentSessionNum() + 1);
+				SessionRecord newRecord = createNewRecord(numSeedsInTorrent, numLeechInTorrent, peer,
+						ps.getCurrentSessionNum());
+				ps.setCurrentSessionRecord(newRecord);
+				ps.setSharingPeer(peer);  // this line is necessary in case we only had a zero record for this peerId
+			}
 		} else {  // means we don't have any record for this peer					
 			// init peersStats and first record
 			PeerStats ps = new PeerStats();
