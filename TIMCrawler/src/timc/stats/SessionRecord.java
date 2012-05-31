@@ -5,7 +5,6 @@ import java.util.Date;
 
 public class SessionRecord {
 	
-	public String crawlerPeerID;
 	public String peerIdHex;
 	public String peerIdStr;
 	public String peerIP;
@@ -28,7 +27,4 @@ public class SessionRecord {
 	public int initialNumOfLeeches;
 	public int lastNumOfLeeches;
 	public Boolean isDisconnectedByCrawler;	
-	
-
-
 }

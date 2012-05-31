@@ -15,7 +15,7 @@ public class StatsWriterTest {
 	 * @param args
 	 */
 	public static void main(String[] args) {
-
+		
 		DOMConfigurator.configure("config/log4j.xml");
 
 		try {
@@ -50,6 +50,7 @@ public class StatsWriterTest {
 		tr.totalSize = 1024;
 		tr.pieceSize = 512;
 		tr.numPieces = 2;
+		tr.crawlerPeerID = "-UT2002-";
 		String testId = sw.writeTestStats(tr);
 
 		try {
@@ -64,8 +65,7 @@ public class StatsWriterTest {
 		sr1.peerIP = peer1.getIp();
 		sr1.peerPort = peer1.getPort();
 		sr1.startTime = start;
-		sr1.lastSeen = lastSeen;
-		sr1.crawlerPeerID = "-UT2002-";
+		sr1.lastSeen = lastSeen; 
 
 		SessionRecord sr2 = new SessionRecord();
 		sr2.peerIdStr = peer2.getPeerIdStr();
@@ -74,7 +74,6 @@ public class StatsWriterTest {
 		sr2.peerPort = peer2.getPort();
 		sr2.startTime = start;
 		sr2.lastSeen = lastSeen;
-		sr2.crawlerPeerID = "-UT2002-";
 
 		sw.writeSessionStats(testId, sr1);
 		sw.writeSessionStats(testId, sr2);
