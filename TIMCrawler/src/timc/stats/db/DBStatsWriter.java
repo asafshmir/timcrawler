@@ -88,7 +88,7 @@ public class DBStatsWriter implements StatsWriter {
 			insertSessionRecord(testIdIntVal, session.peerIdHex, session.peerIP, session.peerPort, 
 					new Timestamp(session.startTime.getTime()), new Timestamp(session.lastSeen.getTime()),
 					session.totalDownloadRate, session.lastDownloadRate, session.completionRate,
-					peerClientStr, initialBitfieldIs, lastlBitfieldIs);
+					peerClientStr, initialBitfieldIs, lastlBitfieldIs, session.bitfieldReceived);
 		} catch (SQLException e) {
 			logger.error("Unable to insert a record into 'sessions' table: {}", e.getMessage());
 		} finally {
@@ -198,16 +198,16 @@ public class DBStatsWriter implements StatsWriter {
 		return testId;
 	}
 	
-	protected void insertSessionRecord(int testId, String hexPeerId, String peerIp, int peerPort, 
-										Timestamp startTime, Timestamp lastSeen, float totalDLRate, float lastDLRate,
-										float completionRate, String peerClientStr, InputStream initialBitfield, InputStream lastBitfield) throws SQLException {
+	protected void insertSessionRecord(int testId, String hexPeerId, String peerIp, int peerPort, Timestamp startTime, Timestamp lastSeen,
+										float totalDLRate, float lastDLRate, float completionRate, String peerClientStr,
+										InputStream initialBitfield, InputStream lastBitfield, boolean bitfieldReceived) throws SQLException {
 		
 		PreparedStatement stmt = null;
 		String insertSessionSQL = "INSERT INTO `tim`.`sessions` " +
 				"(fk_test_id, peer_id, peer_ip, peer_port, session_num, start_time, last_seen, " +
 				"total_download_rate, last_download_rate, completion_rate, peer_client, " +
-				"initial_bitfield, last_bitfield) " +
-				"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?);";
+				"initial_bitfield, last_bitfield, bitfield_recv) " +
+				"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
 
 		int sessionNum = getNextSessionNum(hexPeerId, peerIp, peerPort, testId);
 		
@@ -226,6 +226,7 @@ public class DBStatsWriter implements StatsWriter {
 	        stmt.setString(11, peerClientStr);
 	        stmt.setBlob(12, initialBitfield);
 	        stmt.setBlob(13, lastBitfield);
+	        stmt.setBoolean(14, bitfieldReceived);
 	        
 	        stmt.executeUpdate();
 	        

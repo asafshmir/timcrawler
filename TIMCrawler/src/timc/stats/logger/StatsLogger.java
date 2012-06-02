@@ -286,10 +286,12 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 
 	private SessionRecord createZeroRecord(String ip, int port, Peer basePeer) {
 		SessionRecord rec0 = new SessionRecord();		
-		rec0.initialNumOfLeeches = this.getNumLeechInTorrent();
-		rec0.initialNumOfSeeds = this.getNumSeedsInTorrent();
-		rec0.peerIdHex = basePeer.getHexPeerId();
-		rec0.peerIdStr = basePeer.getPeerIdStr();
+		
+		synchronized(basePeer) {
+			rec0.peerIdHex = basePeer.getHexPeerId();
+			rec0.peerIdStr = basePeer.getPeerIdStr();
+		}
+		
 		rec0.peerIP = ip;
 		rec0.peerPort = port;
 		rec0.sessionSeqNum = 0;
@@ -303,20 +305,23 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 	private SessionRecord createNewRecord(int numSeedsInTorrent,
 			int numLeechInTorrent, SharingPeer peer, int sessionSeqNum) {
 		SessionRecord rec = new SessionRecord();
-		rec.totalDownloadRate = peer.getPeerTotalDLRate().get() / (float)1024;
-		rec.lastDownloadRate = peer.getPeerLastDLRate().get() / (float)1024;
-		rec.completionRate = (float)peer.getAvailablePieces().cardinality() / (float)torrent.getPieceCount();
-		rec.initialBitfield = peer.getAvailablePieces();
-		rec.initialNumOfLeeches = numLeechInTorrent;
-		rec.initialNumOfSeeds = numSeedsInTorrent;
+		
+		synchronized (peer) {
+			rec.totalDownloadRate = peer.getPeerTotalDLRate().get() / (float)1024;
+			rec.lastDownloadRate = peer.getPeerLastDLRate().get() / (float)1024;
+			rec.completionRate = (float)peer.getAvailablePieces().cardinality() / (float)torrent.getPieceCount();
+			rec.initialBitfield = peer.getAvailablePieces();
+			rec.lastBitfield = peer.getAvailablePieces();
+			rec.bitfieldReceived = peer.isBitfieldReceived();
+			// dont confuse getPeerIdStr (for output in log records) and peer.getHexPeerId (which is for MAPs)
+			rec.peerIdHex = peer.getHexPeerId();
+			rec.peerIdStr = peer.getPeerIdStr();
+			rec.peerIP = peer.getIp();
+			rec.peerPort = peer.getPort();
+		}
+		
 		rec.lastNumOfLeeches = numLeechInTorrent;
 		rec.lastNumOfSeeds = numSeedsInTorrent;
-		rec.lastBitfield = peer.getAvailablePieces();
-		// dont confuse getPeerIdStr (for output in log records) and peer.getHexPeerId (which is for MAPs)
-		rec.peerIdHex = peer.getHexPeerId();
-		rec.peerIdStr = peer.getPeerIdStr();
-		rec.peerIP = peer.getIp();
-		rec.peerPort = peer.getPort();
 		rec.sessionSeqNum = sessionSeqNum;
 		rec.startTime = new Date();
 		rec.lastSeen = new Date();
@@ -325,11 +330,16 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 
 	private void updateRecordOnDisconnection(SessionRecord rec, SharingPeer peer, 
 			boolean isDisconnectedByCrawler, int numSeedsInTorrent, int numLeechInTorrent) {
-		rec.completionRate = (float)peer.getAvailablePieces().cardinality() / (float)torrent.getPieceCount();
+		
+		synchronized (peer) {
+			rec.completionRate = (float)peer.getAvailablePieces().cardinality() / (float)torrent.getPieceCount();
+			rec.lastBitfield = peer.getAvailablePieces();
+			rec.bitfieldReceived = peer.isBitfieldReceived();
+			rec.totalDownloadRate = peer.getPeerTotalDLRate().get() / (float)1024;
+			rec.lastDownloadRate = peer.getPeerLastDLRate().get() / (float)1024;
+		}
+		
 		rec.isDisconnectedByCrawler = isDisconnectedByCrawler;
-		rec.lastBitfield = peer.getAvailablePieces();
-		rec.totalDownloadRate = peer.getPeerTotalDLRate().get() / (float)1024;
-		rec.lastDownloadRate = peer.getPeerLastDLRate().get() / (float)1024;
 		rec.lastNumOfLeeches = numLeechInTorrent;
 		rec.lastNumOfSeeds = numSeedsInTorrent;
 		rec.lastSeen = new Date();		
@@ -379,6 +389,5 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 			ps.setCurrentSessionRecord(rec1);
 			this.sessionsMap.put(peer.getHexPeerId(), ps);
 		}
-		
 	}	
 }
