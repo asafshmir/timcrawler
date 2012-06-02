@@ -82,6 +82,7 @@ public class SharingPeer extends Peer implements MessageListener {
 
 	private SharedTorrent torrent;
 	private BitSet availablePieces;
+	private boolean bitfieldReceived;
 
 	private Piece requestedPiece;
 	private int lastRequestedOffset;
@@ -112,6 +113,7 @@ public class SharingPeer extends Peer implements MessageListener {
 		this.torrent = torrent;
 		this.listeners = new HashSet<PeerActivityListener>();
 		this.availablePieces = new BitSet(this.torrent.getPieceCount());
+		this.bitfieldReceived = false;
 		this.exchangeLock = new Object();
 
 		this.reset();
@@ -230,6 +232,14 @@ public class SharingPeer extends Peer implements MessageListener {
 		synchronized (this.availablePieces) {
 			return (BitSet)this.availablePieces.clone();
 		}
+	}
+	
+	/** Returns whether any 'BITFIELD' message has been received.
+	 *
+	 * @return true iff a 'BITFIELD' message has been received.
+	 */
+	public boolean isBitfieldReceived() {
+		return this.bitfieldReceived;
 	}
 
 	/** Returns the currently requested piece, if any.
@@ -507,6 +517,7 @@ public class SharingPeer extends Peer implements MessageListener {
 				// Augment the hasPiece bitfield from this BITFIELD message
 				Message.BitfieldMessage bitfield = (Message.BitfieldMessage)msg;
 
+				this.bitfieldReceived = true;
 				synchronized (this.availablePieces) {
 					this.availablePieces = bitfield.getBitfield();
 					logger.info("Recorded bitfield from {} with {} " +
