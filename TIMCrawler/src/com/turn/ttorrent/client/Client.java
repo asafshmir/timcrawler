@@ -41,6 +41,7 @@ import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
@@ -714,8 +715,11 @@ public class Client extends Observable implements Runnable,
 	 * @param port The peer's port.
 	 */
 	private void processAnnouncedPeerAsynchronously(byte[] peerId, String ip, int port) {
-		if (!this.stop)
+		try {
 			this.connectionTp.execute(new PeerConnector(peerId, ip, port));
+		} catch (RejectedExecutionException ree) {
+			logger.error("RejectedExecutionException: {}", ree.getMessage());
+		}
 	}
 	
 	
