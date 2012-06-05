@@ -97,7 +97,7 @@ public class Client extends Observable implements Runnable,
 	 * 2*UNCHOKING_FREQUENCY seconds. */
 	private static final int OPTIMISTIC_UNCHOKE_ITERATIONS = 3;
 
-	private static final int RATE_COMPUTATION_ITERATIONS = 20; // Was 2
+	private static final int RATE_COMPUTATION_ITERATIONS = 2;
 	private static final int MAX_DOWNLOADERS_UNCHOKE = 4;
 	private static final int VOLUNTARY_OUTBOUND_CONNECTIONS = 20;
 
@@ -344,6 +344,12 @@ public class Client extends Observable implements Runnable,
 
 		int optimisticIterations = 0;
 		int rateComputationIterations = 0;
+		int peerDLRate1MaxIterations = Integer.parseInt(TIMConfigurator.getProperty("peer_dl1_interval"));
+		int peerDLRate2MaxIterations = Integer.parseInt(TIMConfigurator.getProperty("peer_dl2_interval"));
+		int peerDLRate3MaxIterations = Integer.parseInt(TIMConfigurator.getProperty("peer_dl3_interval"));
+		int peerDLRate1Iterations = 0;
+		int peerDLRate2Iterations = 0;
+		int peerDLRate3Iterations = 0;
 
 		while (!this.stop) {
 			optimisticIterations =
@@ -356,12 +362,26 @@ public class Client extends Observable implements Runnable,
 				 Client.RATE_COMPUTATION_ITERATIONS :
 				 rateComputationIterations - 1);
 
+			peerDLRate1Iterations = (peerDLRate1Iterations == 0 ? peerDLRate1MaxIterations : peerDLRate1Iterations - 1);
+			peerDLRate2Iterations = (peerDLRate2Iterations == 0 ? peerDLRate2MaxIterations : peerDLRate2Iterations - 1);
+			peerDLRate3Iterations = (peerDLRate3Iterations == 0 ? peerDLRate3MaxIterations : peerDLRate3Iterations - 1);
+			
 			try {
 				this.unchokePeers(optimisticIterations == 0);
 				this.info();
-				if (rateComputationIterations == 0) {
+				
+				if (rateComputationIterations == 0)
 					this.resetPeerRates();
-				}
+				
+				if (peerDLRate1Iterations == 0)
+					this.resetPeersDLRate1();
+				
+				if (peerDLRate2Iterations == 0)
+					this.resetPeersDLRate2();
+				
+				if (peerDLRate3Iterations == 0)
+					this.resetPeersDLRate3();
+				
 			} catch (Exception e) {
 				logger.error("An exception occurred during the BitTorrent " +
 						"client main loop execution!", e);
@@ -457,7 +477,7 @@ public class Client extends Observable implements Runnable,
 		return sb.toString();
 	}
 
-	/** Reset peers download and upload rates.
+	/** Reset download and upload rates from peers.
 	 *
 	 * This method is called every RATE_COMPUTATION_ITERATIONS to reset the
 	 * download and upload rates of all peers. This contributes to making the
@@ -469,9 +489,24 @@ public class Client extends Observable implements Runnable,
 		for (SharingPeer peer : this.connected.values()) {
 			peer.getDLRate().reset();
 			peer.getULRate().reset();
-			// *** ADDED BY CHIKO
-			peer.getPeerLastDLRate().reset();
-			// *** ADDED BY CHIKO
+		}
+	}
+	
+	/** Reset peers download rates.
+	 */
+	private synchronized void resetPeersDLRate1() {
+		for (SharingPeer peer : this.connected.values()) {
+			peer.getPeerDLRate1().reset();
+		}
+	}
+	private synchronized void resetPeersDLRate2() {
+		for (SharingPeer peer : this.connected.values()) {
+			peer.getPeerDLRate2().reset();
+		}
+	}
+	private synchronized void resetPeersDLRate3() {
+		for (SharingPeer peer : this.connected.values()) {
+			peer.getPeerDLRate3().reset();
 		}
 	}
 

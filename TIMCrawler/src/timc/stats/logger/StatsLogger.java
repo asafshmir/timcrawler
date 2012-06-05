@@ -308,7 +308,9 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		
 		synchronized (peer) {
 			rec.totalDownloadRate = peer.getPeerTotalDLRate().get() / (float)1024;
-			rec.lastDownloadRate = peer.getPeerLastDLRate().get() / (float)1024;
+			rec.lastDLRate1 = peer.getPeerDLRate1().get() / (float)1024;
+			rec.lastDLRate2 = peer.getPeerDLRate2().get() / (float)1024;
+			rec.lastDLRate3 = peer.getPeerDLRate3().get() / (float)1024;
 			rec.completionRate = (float)peer.getAvailablePieces().cardinality() / (float)torrent.getPieceCount();
 			rec.initialBitfield = peer.getAvailablePieces();
 			rec.lastBitfield = peer.getAvailablePieces();
@@ -336,7 +338,9 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 			rec.lastBitfield = peer.getAvailablePieces();
 			rec.bitfieldReceived = peer.isBitfieldReceived();
 			rec.totalDownloadRate = peer.getPeerTotalDLRate().get() / (float)1024;
-			rec.lastDownloadRate = peer.getPeerLastDLRate().get() / (float)1024;
+			rec.lastDLRate1 = peer.getPeerDLRate1().get() / (float)1024;
+			rec.lastDLRate2 = peer.getPeerDLRate2().get() / (float)1024;
+			rec.lastDLRate3 = peer.getPeerDLRate3().get() / (float)1024;
 		}
 		
 		rec.isDisconnectedByCrawler = isDisconnectedByCrawler;
