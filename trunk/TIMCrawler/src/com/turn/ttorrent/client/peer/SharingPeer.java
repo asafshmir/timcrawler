@@ -93,7 +93,9 @@ public class SharingPeer extends Peer implements MessageListener {
 	private Rate download;
 	// *** ADDED BY CHIKO
 	private Rate peerTotalDownload;
-	private Rate peerLastDownload;
+	private Rate peerDLRate1;
+	private Rate peerDLRate2;
+	private Rate peerDLRate3;
 	// *** ADDED BY CHIKO
 	private Rate upload;
 
@@ -133,19 +135,27 @@ public class SharingPeer extends Peer implements MessageListener {
 		return this.download;
 	}
 	
+	public Rate getULRate() {
+		return this.upload;
+	}
+	
 	// *** ADDED BY CHIKO
 	public Rate getPeerTotalDLRate() {
 		return this.peerTotalDownload;
 	}
 	
-	public Rate getPeerLastDLRate() {
-		return this.peerLastDownload;
+	public Rate getPeerDLRate1() {
+		return this.peerDLRate1;
+	}
+	
+	public Rate getPeerDLRate2() {
+		return this.peerDLRate2;
+	}
+	
+	public Rate getPeerDLRate3() {
+		return this.peerDLRate3;
 	}
 	// *** ADDED BY CHIKO
-
-	public Rate getULRate() {
-		return this.upload;
-	}
 
 	/** Reset the peer state.
 	 *
@@ -274,15 +284,19 @@ public class SharingPeer extends Peer implements MessageListener {
 		this.download = new Rate();
 		this.download.reset();
 		
+		this.upload = new Rate();
+		this.upload.reset();
+		
 		// *** ADDED BY CHIKO
 		this.peerTotalDownload = new Rate();
 		this.peerTotalDownload.reset();
-		this.peerLastDownload = new Rate();
-		this.peerLastDownload.reset();
+		this.peerDLRate1 = new Rate();
+		this.peerDLRate1.reset();
+		this.peerDLRate2 = new Rate();
+		this.peerDLRate2.reset();
+		this.peerDLRate3 = new Rate();
+		this.peerDLRate3.reset();
 		// *** ADDED BY CHIKO
-
-		this.upload = new Rate();
-		this.upload.reset();
 	}
 
 	/** Tells whether this peer as an active connection through a peer
@@ -686,7 +700,9 @@ public class SharingPeer extends Peer implements MessageListener {
 	// *** ADDED BY CHIKO
 	private void updatePeerDLRate(long count) {
 		this.peerTotalDownload.add(count);
-		this.peerLastDownload.add(count);		
+		this.peerDLRate1.add(count);
+		this.peerDLRate2.add(count);
+		this.peerDLRate3.add(count);
 	}
 	// *** ADDED BY CHIKO
 
