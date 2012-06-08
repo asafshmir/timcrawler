@@ -48,8 +48,8 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 	private StatsWriter statsWriter;
 	private TestRecord testRecord;
 	private String testId;
-	private int numSeeds;
-	private int numLeeches;
+	private int numSeeders;
+	private int numLeechers;
 		
 	public StatsLogger(ConcurrentMap<String, SharingPeer> connected, SharedTorrent torrent, 
 			Announce announce, String crawlerPeerID)
@@ -195,16 +195,16 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 			}	
 			
 			// Whether this is the first time we get the number of seeders and leechers
-			boolean updateNumSeeders = (this.numSeeds == 0);
+			boolean updateNumSeeders = (this.numSeeders == 0);
 			
 			if (answer.containsKey("complete"))
-				this.numSeeds = answer.get("complete").getInt();
+				this.numSeeders = answer.get("complete").getInt();
 			if (answer.containsKey("incomplete"))
-				this.numLeeches = answer.get("incomplete").getInt();
+				this.numLeechers = answer.get("incomplete").getInt();
 			
 			// Update number of seeders and leechers only if this is the first time we get them
-			this.testRecord.initialNumLeechers = this.numLeeches;
-			this.testRecord.initialNumSeeders = this.numSeeds;
+			this.testRecord.initialNumLeechers = this.numLeechers;
+			this.testRecord.initialNumSeeders = this.numSeeders;
 			if (updateNumSeeders)
 				this.statsWriter.updateTestStats(this.testId, this.testRecord);
 
@@ -265,8 +265,8 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 				sessionsMap.get(peerId).setZeroSessionRecord(rec0);
 			} else { // just update the zero record				
 				rec0.lastSeenByTracker = new Date();
-				rec0.lastNumOfLeeches = this.getNumLeechInTorrent();
-				rec0.lastNumOfSeeds = this.getNumSeedsInTorrent();	
+				rec0.lastNumLeechers = this.getNumLeechInTorrent();
+				rec0.lastNumSeeders = this.getNumSeedsInTorrent();	
 			}			
 		} else { // first time we encounter this peerId
 			SessionRecord rec0 = createZeroRecord(ip, port, basePeer);
@@ -296,8 +296,8 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		rec0.peerPort = port;
 		rec0.sessionSeqNum = 0;
 		rec0.lastSeenByTracker = new Date();
-		rec0.lastNumOfLeeches = this.getNumLeechInTorrent();
-		rec0.lastNumOfSeeds = this.getNumSeedsInTorrent();
+		rec0.lastNumLeechers = this.getNumLeechInTorrent();
+		rec0.lastNumSeeders = this.getNumSeedsInTorrent();
 		
 		return rec0;
 	}
@@ -322,8 +322,8 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 			rec.peerPort = peer.getPort();
 		}
 		
-		rec.lastNumOfLeeches = numLeechInTorrent;
-		rec.lastNumOfSeeds = numSeedsInTorrent;
+		rec.lastNumLeechers = numLeechInTorrent;
+		rec.lastNumSeeders = numSeedsInTorrent;
 		rec.sessionSeqNum = sessionSeqNum;
 		rec.startTime = new Date();
 		rec.lastSeen = new Date();
@@ -344,17 +344,17 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		}
 		
 		rec.isDisconnectedByCrawler = isDisconnectedByCrawler;
-		rec.lastNumOfLeeches = numLeechInTorrent;
-		rec.lastNumOfSeeds = numSeedsInTorrent;
+		rec.lastNumLeechers = numLeechInTorrent;
+		rec.lastNumSeeders = numSeedsInTorrent;
 		rec.lastSeen = new Date();		
 	}
 	
 	private int getNumLeechInTorrent() {
-		return this.numLeeches;
+		return this.numLeechers;
 	}
 
 	private int getNumSeedsInTorrent() {
-		return this.numSeeds;
+		return this.numSeeders;
 	}
 
 	@Override
