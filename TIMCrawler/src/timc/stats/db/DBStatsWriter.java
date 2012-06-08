@@ -88,7 +88,8 @@ public class DBStatsWriter implements StatsWriter {
 			insertSessionRecord(testIdIntVal, session.peerIdHex, session.peerIP, session.peerPort, 
 					new Timestamp(session.startTime.getTime()), new Timestamp(session.lastSeen.getTime()),
 					session.totalDownloadRate, session.lastDLRate1, session.lastDLRate2, session.lastDLRate3, session.completionRate,
-					peerClientStr, initialBitfieldIs, lastlBitfieldIs, session.bitfieldReceived);
+					peerClientStr, initialBitfieldIs, lastlBitfieldIs, session.bitfieldReceived,
+					session.lastNumLeechers, session.lastNumSeeders);
 		} catch (SQLException e) {
 			logger.error("Unable to insert a record into 'sessions' table: {}", e.getMessage());
 		} finally {
@@ -199,15 +200,16 @@ public class DBStatsWriter implements StatsWriter {
 	}
 	
 	protected void insertSessionRecord(int testId, String hexPeerId, String peerIp, int peerPort, Timestamp startTime, Timestamp lastSeen,
-										float totalDLRate, float lastDLRate1, float lastDLRate2, float lastDLRate3, float completionRate, String peerClientStr,
-										InputStream initialBitfield, InputStream lastBitfield, boolean bitfieldReceived) throws SQLException {
+										float totalDLRate, float lastDLRate1, float lastDLRate2, float lastDLRate3, float completionRate,
+										String peerClientStr, InputStream initialBitfield, InputStream lastBitfield, boolean bitfieldReceived,
+										int lastNumSeeders, int lastNumLeechers) throws SQLException {
 		
 		PreparedStatement stmt = null;
 		String insertSessionSQL = "INSERT INTO `tim`.`sessions` " +
 				"(fk_test_id, peer_id, peer_ip, peer_port, session_num, start_time, last_seen, " +
 				"total_download_rate, last_dl_rate1, last_dl_rate2, last_dl_rate3, completion_rate, " +
-				"peer_client, initial_bitfield, last_bitfield, bitfield_recv) " +
-				"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
+				"peer_client, initial_bitfield, last_bitfield, bitfield_recv, last_num_seeders, last_num_leechers) " +
+				"VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);";
 
 		int sessionNum = getNextSessionNum(hexPeerId, peerIp, peerPort, testId);
 		
@@ -229,6 +231,8 @@ public class DBStatsWriter implements StatsWriter {
 	        stmt.setBlob(14, initialBitfield);
 	        stmt.setBlob(15, lastBitfield);
 	        stmt.setBoolean(16, bitfieldReceived);
+	        stmt.setInt(17, lastNumSeeders);
+	        stmt.setInt(18, lastNumLeechers);
 	        
 	        stmt.executeUpdate();
 	        
