@@ -89,7 +89,7 @@ public class DBStatsWriter implements StatsWriter {
 					new Timestamp(session.startTime.getTime()), new Timestamp(session.lastSeen.getTime()),
 					session.totalDownloadRate, session.lastDLRate1, session.lastDLRate2, session.lastDLRate3, session.completionRate,
 					peerClientStr, initialBitfieldIs, lastlBitfieldIs, session.bitfieldReceived,
-					session.lastNumLeechers, session.lastNumSeeders);
+					session.lastNumSeeders, session.lastNumLeechers);
 		} catch (SQLException e) {
 			logger.error("Unable to insert a record into 'sessions' table: {}", e.getMessage());
 		} finally {
