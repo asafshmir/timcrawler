@@ -184,8 +184,6 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		this.interval = 5;
 		this.initial = true;
 
-		// TODO try to connect twice at the beginning (some trackers send only 1 peer to 'test' you)
-		
 		while (!this.stop) {
 			this.announce(this.initial ?
 					AnnounceEvent.STARTED :
@@ -269,7 +267,6 @@ public class Announce implements Runnable, AnnounceResponseListener {
 		params.put("uploaded", Long.valueOf(this.torrent.getUploaded()).toString());  
 		params.put("downloaded", Long.valueOf(this.torrent.getDownloaded()).toString());
 		params.put("left", Long.valueOf(this.torrent.getLeft()).toString());
-		// TODO consider not sending event parameter - TC didn't send it
 		if (!AnnounceEvent.NONE.equals(event)) {
 			params.put("event", event.name().toLowerCase());
 		}

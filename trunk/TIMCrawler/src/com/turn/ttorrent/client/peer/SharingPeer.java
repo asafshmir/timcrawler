@@ -372,7 +372,7 @@ public class SharingPeer extends Peer implements MessageListener {
 					"Trying to download a piece while previous " +
 					"download not completed!");
 			logger.warn("What's going on? {}", up.getMessage(), up);
-			throw up; // ah ah.
+			// throw up; // ah ah.
 		}
 
 //		this.requests = new LinkedBlockingQueue<Message.RequestMessage>(

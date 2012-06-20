@@ -110,7 +110,7 @@ public class Client extends Observable implements Runnable,
 		DONE;
 	};
 
-	private static final String BITTORRENT_ID_PREFIX = "-TO0042-";//TODO change to our unique ID
+	private static final String BITTORRENT_ID_PREFIX = "-TO0042-";
 
 	private SharedTorrent torrent;
 	private ClientState state;

@@ -599,7 +599,6 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 		interesting.andNot(this.completedPieces);
 		interesting.andNot(this.requestedPieces);
 
-		// TODO: Change back to trace
 		logger.trace("Peer {} is ready and has {} interesting piece(s).",
 			peer, interesting.cardinality());
 		logger.info("Peer has {} piece(s), we have {} piece(s) and {} " +
