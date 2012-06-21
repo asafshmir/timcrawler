@@ -71,7 +71,7 @@ public class FileCollectionStorage implements TorrentByteStorage {
 
 		for (FileOffset fo : this.select(offset, requested)) {
 			buffer.limit(bytes + (int)fo.length);
-			bytes += fo.file.read(buffer, (int)fo.offset);
+			bytes += fo.file.read(buffer, (long)fo.offset);
 		}
 
 		if (bytes < requested) {
@@ -185,9 +185,9 @@ public class FileCollectionStorage implements TorrentByteStorage {
 
 			long position = offset - file.offset();
 			position = position > 0 ? position : 0;
-			int size = Math.min(
-				(int)(file.size() - position),
-				(int)(length - bytes));
+			long size = Math.min(
+				(long)(file.size() - position),
+				(long)(length - bytes));
 			selected.add(new FileOffset(file, position, size));
 			bytes += size;
 		}
