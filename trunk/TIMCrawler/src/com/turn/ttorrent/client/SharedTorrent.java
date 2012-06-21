@@ -308,11 +308,11 @@ public class SharedTorrent extends Torrent implements PeerActivityListener {
 			// length. Let's make sure we get the right piece length in any
 			// situation.
 			long off = ((long)idx) * this.pieceLength;
-			int len = Math.min(
-				(int)(this.bucket.size() - off),
+			long len = Math.min(
+				(long)(this.bucket.size() - off),
 				this.pieceLength);
 
-			this.pieces[idx] = new Piece(this.bucket, idx, off, len, hash,
+			this.pieces[idx] = new Piece(this.bucket, idx, off, (int)len, hash,
 				this.isSeeder());
 
 			Callable<Piece> hasher = new Piece.CallableHasher(this.pieces[idx]);
