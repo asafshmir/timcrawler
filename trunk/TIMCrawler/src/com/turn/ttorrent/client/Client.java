@@ -25,6 +25,7 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
+import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashSet;
@@ -38,9 +39,10 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
@@ -174,8 +176,8 @@ public class Client extends Observable implements Runnable,
 		int poolSize = Integer.parseInt(TIMConfigurator.getProperty("tp_pool_size"));
 		int maxPoolSize = Integer.parseInt(TIMConfigurator.getProperty("tp_max_pool_size"));
 		long keepAliveTime = Integer.parseInt(TIMConfigurator.getProperty("tp_keep_alive_seconds"));
-		int queueSize = Integer.parseInt(TIMConfigurator.getProperty("tp_queue_size"));
-	    final ArrayBlockingQueue<Runnable> queue = new ArrayBlockingQueue<Runnable>(queueSize);
+		//int queueSize = Integer.parseInt(TIMConfigurator.getProperty("tp_queue_size"));
+	    final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<Runnable>();
 		this.connectionTp = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAliveTime, TimeUnit.SECONDS, queue);
 		
 		// Initializing global configuration
@@ -750,10 +752,15 @@ public class Client extends Observable implements Runnable,
 	 * @param port The peer's port.
 	 */
 	private void processAnnouncedPeerAsynchronously(byte[] peerId, String ip, int port) {
-		try {
-			this.connectionTp.execute(new PeerConnector(peerId, ip, port));
-		} catch (RejectedExecutionException ree) {
-			logger.error("RejectedExecutionException: {}", ree.getMessage());
+		PeerConnector pc = new PeerConnector(peerId, ip, port);
+		if (!(this.connectionTp.getQueue().contains(pc))) {
+			try {
+				this.connectionTp.execute(pc);
+			} catch (RejectedExecutionException ree) {
+				logger.error("RejectedExecutionException: {}", ree.getMessage());
+			}
+		} else {
+			logger.warn("PeerConnector already in execution queue.");
 		}
 	}
 	
@@ -1122,6 +1129,23 @@ public class Client extends Observable implements Runnable,
 		
 		public void run() {
 			processAnnouncedPeer(this.peerId, this.ip, this.port);
+		}
+		
+		@Override
+		public boolean equals(Object other) {
+			if (this == other) return true;
+			if (!(other instanceof PeerConnector)) return false;
+			PeerConnector that = (PeerConnector)other;
+			return ((Arrays.equals(this.peerId, that.peerId)) &&
+					(this.ip.equals(that.ip)) &&
+					(this.port == that.port));
+		}
+		
+		@Override
+		public int hashCode() {
+			int hash = 7;
+			hash += Arrays.hashCode(this.peerId) + this.ip.hashCode() * this.port;
+			return hash;
 		}
 	}
 
