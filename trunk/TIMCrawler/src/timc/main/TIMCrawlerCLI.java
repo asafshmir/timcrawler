@@ -87,10 +87,20 @@ public class TIMCrawlerCLI {
 			       }
 			    }
 			  );
+		
+		Command clientStatusCommand =
+			    new Command("stat", "Print the client's status string", 
+			    new ICommandExecutor () {
+			       public void execute(ParseResult pr) {
+			    	   System.out.println(client.statusStr());
+			       }
+			    }
+			  );
 
 		Set<Command> cs = new HashSet<Command>();
 		cs.add(stopClientCommand);
 		cs.add(clientInfoCommand);
+		cs.add(clientStatusCommand);
 		cs.add(new HelpCommand(cs));
 		this.cli = new NaturalCLI(cs);		
 	}
