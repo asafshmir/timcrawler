@@ -25,9 +25,11 @@ import java.net.SocketException;
 import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -129,6 +131,9 @@ public class Client extends Observable implements Runnable,
 	private Announce announce;
 	private Reconnector reconnector;
 	private ThreadPoolExecutor connectionTp;
+	
+	private Date lastAnnounce;
+	private Date lastConnection;
 	
 	/** Added when received from tracker, removed if initial connection failed.
 	 * 	Also contains peers which are currently handled by Reconnector, or that we don't want
@@ -477,6 +482,19 @@ public class Client extends Observable implements Runnable,
 		
 		return sb.toString();
 	}
+	
+	public String statusStr() {
+		SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss");
+		String status = String.format("Reconnector has %d waiting peers, " +
+						"ConnectionTP has %d waiting tasks, " +
+						"Now is %s, Last Announce %s, Last Connection %s.",
+						this.reconnector.getNumOfPeers(),
+						this.connectionTp.getQueue().size(),
+						df.format(new Date()), 
+						(this.lastAnnounce != null) ? df.format(this.lastAnnounce) : null,
+						(this.lastConnection != null) ? df.format(this.lastConnection) : null);
+		return status;
+	}
 
 	/** Reset download and upload rates from peers.
 	 *
@@ -677,7 +695,7 @@ public class Client extends Observable implements Runnable,
 	@Override
 	public void handleAnnounceResponse(Map<String, BEValue> answer) {
 		try {
-			
+			this.lastAnnounce = new Date();
 			int numSeeders = -1;
 			int numLeechers = -1;	
 			if (answer.containsKey("complete"))
@@ -818,6 +836,7 @@ public class Client extends Observable implements Runnable,
 	 */
 	@Override
 	public void handleNewPeerConnection(Socket s, byte[] peerId) {
+		this.lastConnection = new Date();
 		SharingPeer peer = this.getOrCreatePeer(peerId,
 				s.getInetAddress().getHostAddress(), s.getPort());
 
@@ -1066,6 +1085,10 @@ public class Client extends Observable implements Runnable,
 				} catch (InterruptedException e) {/* ignore */}
 				retryAllPeers();
 			}
+		}
+		
+		public int getNumOfPeers() {
+			return this.retryPeers.size();
 		}
 		
 		/**
