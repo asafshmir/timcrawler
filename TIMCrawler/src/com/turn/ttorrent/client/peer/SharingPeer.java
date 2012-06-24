@@ -390,7 +390,7 @@ public class SharingPeer extends Peer implements MessageListener {
 		this.requests = new LinkedBlockingQueue<Message.RequestMessage>(queueSize);
 		
 		if (passedCompletionRateInDropPiecesMode) {
-			logger.info("mode {}: Limited block request quque for peer {} to {}",
+			logger.trace("mode {}: Limited block request quque for peer {} to {}",
 					new Object[] {
 					TIMConfigurator.getOpMode(), this, queueSize
 			});
@@ -605,7 +605,7 @@ public class SharingPeer extends Peer implements MessageListener {
 //					&& (this.torrent.getCompletionAsFraction() > TIMConfigurator.getHalfSeedCompletionRate());
 								
 				if (shouldIgnorePiece) {
-					logger.info("{} mode: Received new piece message from peer {} but passed specified completion rate [{}%/{}%]. Ignoring the message!", 
+					logger.trace("{} mode: Received new piece message from peer {} but passed specified completion rate [{}%/{}%]. Ignoring the message!", 
 							new Object[] {
 							TIMConfigurator.getOpMode(), 
 							this,
