@@ -176,8 +176,7 @@ public class Client extends Observable implements Runnable,
 		int poolSize = Integer.parseInt(TIMConfigurator.getProperty("tp_pool_size"));
 		int maxPoolSize = Integer.parseInt(TIMConfigurator.getProperty("tp_max_pool_size"));
 		long keepAliveTime = Integer.parseInt(TIMConfigurator.getProperty("tp_keep_alive_seconds"));
-		//int queueSize = Integer.parseInt(TIMConfigurator.getProperty("tp_queue_size"));
-	    final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<Runnable>();
+		final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<Runnable>();
 		this.connectionTp = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAliveTime, TimeUnit.SECONDS, queue);
 		
 		// Initializing global configuration
@@ -760,7 +759,7 @@ public class Client extends Observable implements Runnable,
 				logger.error("RejectedExecutionException: {}", ree.getMessage());
 			}
 		} else {
-			logger.warn("PeerConnector already in execution queue.");
+			logger.trace("PeerConnector already in execution queue.");
 		}
 	}
 	
