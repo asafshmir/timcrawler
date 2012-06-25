@@ -179,10 +179,8 @@ public class Client extends Observable implements Runnable,
 		
 		// Initialize the connection thread pool
 		int poolSize = Integer.parseInt(TIMConfigurator.getProperty("tp_pool_size"));
-		int maxPoolSize = Integer.parseInt(TIMConfigurator.getProperty("tp_max_pool_size"));
-		long keepAliveTime = Integer.parseInt(TIMConfigurator.getProperty("tp_keep_alive_seconds"));
 		final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<Runnable>();
-		this.connectionTp = new ThreadPoolExecutor(poolSize, maxPoolSize, keepAliveTime, TimeUnit.SECONDS, queue);
+		this.connectionTp = new ThreadPoolExecutor(poolSize, poolSize, Long.MAX_VALUE, TimeUnit.NANOSECONDS, queue);
 		
 		// Initializing global configuration
 		TIMConfigurator.initialize();
