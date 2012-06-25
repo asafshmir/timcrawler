@@ -486,10 +486,12 @@ public class Client extends Observable implements Runnable,
 	public String statusStr() {
 		SimpleDateFormat df = new SimpleDateFormat("HH:mm:ss");
 		String status = String.format("Reconnector has %d waiting peers, " +
-						"ConnectionTP has %d waiting tasks, " +
+						"ConnectionTP has %d queued tasks, and %d(%d) threads, " +
 						"Now is %s, Last Announce %s, Last Connection %s.",
 						this.reconnector.getNumOfPeers(),
 						this.connectionTp.getQueue().size(),
+						this.connectionTp.getPoolSize(),
+						this.connectionTp.getActiveCount(),
 						df.format(new Date()), 
 						(this.lastAnnounce != null) ? df.format(this.lastAnnounce) : null,
 						(this.lastConnection != null) ? df.format(this.lastConnection) : null);
