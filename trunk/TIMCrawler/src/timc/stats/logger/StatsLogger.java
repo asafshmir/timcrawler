@@ -175,8 +175,7 @@ public class StatsLogger implements AnnounceResponseListener, PeerActivityListen
 		updateRecordOnDisconnection(currentRec, peer, false, getNumSeedsInTorrent(), getNumLeechInTorrent());
 		try {
 			this.statsWriter.writeSessionStats(testId, currentRec);
-			logger.info("StatsLogger: the following peer has disconnected. Writing to Sessions table, for testID: " + testId 
-					+ " with session record: " + currentRec.toString());
+			logger.info("StatsLogger: the following peer has disconnected: " + peer.toString() + " Writing to Sessions table.");
 		} catch (Exception e) {
 			logger.error("StatsLogger error: {}", e.getMessage(), e);
 		}
