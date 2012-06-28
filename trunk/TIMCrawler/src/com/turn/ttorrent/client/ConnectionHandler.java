@@ -75,6 +75,7 @@ public class ConnectionHandler implements Runnable {
 
 	public static final int PORT_RANGE_START = 17301;
 	public static final int PORT_RANGE_END = 17309;
+	public static final int SOCKET_READ_TIMEOUT_SECONDS = 30;
 
 	private SharedTorrent torrent;
 	private String id;
@@ -287,6 +288,7 @@ public class ConnectionHandler implements Runnable {
 		}
 
 		try {
+			socket.setSoTimeout(1000*SOCKET_READ_TIMEOUT_SECONDS);
 			this.sendHandshake(socket);
 			Handshake hs = this.validateHandshake(socket,
 					(peer.hasPeerId() ? peer.getPeerId().array() : null));
@@ -327,29 +329,11 @@ public class ConnectionHandler implements Runnable {
 		throws IOException, ParseException {
 		InputStream is = socket.getInputStream();
 		
-		byte[] data = null;
-		int pstrlen = 0;
-		
-		int nTries = 20;
-		Outer: while (nTries > 0) {
-			while (is.available() > 0) {
-				// Read the handshake from the wire
-				pstrlen = is.read();
-				if (pstrlen < 0)
-					throw new IOException("Unable to read");
-				data = new byte[Handshake.BASE_HANDSHAKE_LENGTH + pstrlen];
-				data[0] = (byte)pstrlen;
-				is.read(data, 1, data.length-1);
-				break Outer;
-			}
-			try {
-				Thread.sleep(1000);
-			} catch (Exception ee) { /* ignore */ }
-			nTries--;
-		}
-		
-		if (nTries == 0)
-			throw new IOException("Unable to read");
+		// Read the handshake from the wire
+		int pstrlen = is.read();
+		byte[] data = new byte[Handshake.BASE_HANDSHAKE_LENGTH + pstrlen];
+		data[0] = (byte)pstrlen;
+		is.read(data, 1, data.length-1);
 
 		// Parse and check the handshake
 		Handshake hs = Handshake.parse(ByteBuffer.wrap(data));
