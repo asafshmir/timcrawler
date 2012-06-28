@@ -26,7 +26,6 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.BitSet;
 import java.util.Comparator;
 import java.util.Date;
@@ -712,7 +711,7 @@ public class Client extends Observable implements Runnable,
 
 			try { 
 				List<BEValue> peers = answer.get("peers").getList();
-				logger.debug("Got tracker response with {} peer(s).",
+				logger.info("Got tracker response with {} peer(s).",
 					peers.size());
 				for (BEValue peerInfo : peers) {
 					Map<String, BEValue> info = peerInfo.getMap();
@@ -737,7 +736,7 @@ public class Client extends Observable implements Runnable,
 				}
 
 				ByteBuffer peers = ByteBuffer.wrap(data);
-				logger.debug("Got compact tracker response with {} peer(s).",
+				logger.info("Got compact tracker response with {} peer(s).",
 					nPeers);
 
 				for (int i=0; i < nPeers ; i++) {
@@ -1158,15 +1157,13 @@ public class Client extends Observable implements Runnable,
 			if (this == other) return true;
 			if (!(other instanceof PeerConnector)) return false;
 			PeerConnector that = (PeerConnector)other;
-			return ((Arrays.equals(this.peerId, that.peerId)) &&
-					(this.ip.equals(that.ip)) &&
-					(this.port == that.port));
+			return ((this.ip.equals(that.ip)) && (this.port == that.port));
 		}
 		
 		@Override
 		public int hashCode() {
 			int hash = 7;
-			hash += Arrays.hashCode(this.peerId) + this.ip.hashCode() * this.port;
+			hash += this.ip.hashCode() * this.port;
 			return hash;
 		}
 	}
