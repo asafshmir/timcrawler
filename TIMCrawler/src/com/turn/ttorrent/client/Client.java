@@ -30,7 +30,6 @@ import java.util.BitSet;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Observable;
@@ -128,7 +127,6 @@ public class Client extends Observable implements Runnable,
 	private InetSocketAddress address;
 	private ConnectionHandler service;
 	private Announce announce;
-	private Reconnector reconnector;
 	private ThreadPoolExecutor connectionTp;
 	
 	private Date lastAnnounce;
@@ -141,6 +139,8 @@ public class Client extends Observable implements Runnable,
 	/** Added when handshake is completed, removed when IOException occurred 
 	 * on OutgoingThread or IncomingThread */
 	private ConcurrentMap<String, SharingPeer> connected;
+	/** Peer to be followed - were connected to us, and still not seeders */
+	private ConcurrentMap<String, SharingPeer> retryPeers;
 	
 	private StatsLogger statsLogger;
 
@@ -171,15 +171,11 @@ public class Client extends Observable implements Runnable,
 		this.announce = new Announce(this.torrent, this.id, this.address);
 		this.announce.register(this);
 		
-		// Initialize the reconnector
-		int retryInterval = Integer.parseInt(TIMConfigurator.getProperty("retry_interval"));
-		int numRetries = Integer.parseInt(TIMConfigurator.getProperty("num_retries"));
-		this.reconnector = this.new Reconnector(retryInterval, numRetries);
-		
 		// Initialize the connection thread pool
 		int poolSize = Integer.parseInt(TIMConfigurator.getProperty("tp_pool_size"));
 		final BlockingQueue<Runnable> queue = new LinkedBlockingQueue<Runnable>();
 		this.connectionTp = new ThreadPoolExecutor(poolSize, poolSize, Long.MAX_VALUE, TimeUnit.NANOSECONDS, queue);
+		this.retryPeers = new ConcurrentHashMap<String, SharingPeer>();
 		
 		// Initializing global configuration
 		TIMConfigurator.initialize();
@@ -343,7 +339,6 @@ public class Client extends Observable implements Runnable,
 		this.statsLogger.start();
 		this.announce.start();
 		this.service.start();
-		this.reconnector.start();
 
 		int optimisticIterations = 0;
 		int rateComputationIterations = 0;
@@ -485,7 +480,7 @@ public class Client extends Observable implements Runnable,
 		String status = String.format("Reconnector has %d waiting peers, " +
 						"ConnectionTP has %d queued tasks, and %d(%d) threads, " +
 						"Now is %s, Last Announce %s, Last Connection %s.",
-						this.reconnector.getNumOfPeers(),
+						this.retryPeers.size(),
 						this.connectionTp.getQueue().size(),
 						this.connectionTp.getPoolSize(),
 						this.connectionTp.getActiveCount(),
@@ -693,6 +688,10 @@ public class Client extends Observable implements Runnable,
 	 */
 	@Override
 	public void handleAnnounceResponse(Map<String, BEValue> answer) {
+		
+		// First, reconnect to known peers
+		reconnectToPeers();
+		
 		try {
 			this.lastAnnounce = new Date();
 			int numSeeders = -1;
@@ -702,6 +701,12 @@ public class Client extends Observable implements Runnable,
 			if (answer.containsKey("incomplete"))
 				numLeechers = answer.get("incomplete").getInt();
 			logger.info("Swarm has {} seeders and {} leechers.", numSeeders, numLeechers);
+			
+			// Don't allow too many simultaneous connection
+			if (this.connected.size() >= 
+					Integer.valueOf(TIMConfigurator.getProperty("max_connections"))) {
+				return;
+			}
 			
 			if (!answer.containsKey("peers")) {
 				// No peers returned by the tracker. Apparently we're alone on
@@ -760,6 +765,15 @@ public class Client extends Observable implements Runnable,
 		}
 	}
 
+	private void reconnectToPeers() {
+		synchronized (this.retryPeers) {
+			for (SharingPeer peer : this.retryPeers.values()) {
+				processAnnouncedPeerAsynchronously(
+						(peer.hasPeerId() ? peer.getPeerId().array() : null),
+						peer.getIp(), peer.getPort());
+			}
+		}
+	}
 	
 	/** Create a new <code>PeerConnector</code> and execute it on the ThreadPool.
 	 *
@@ -838,7 +852,7 @@ public class Client extends Observable implements Runnable,
 		this.lastConnection = new Date();
 		SharingPeer peer = this.getOrCreatePeer(peerId,
 				s.getInetAddress().getHostAddress(), s.getPort());
-
+		
 		try {
 			synchronized (peer) {
 				peer.register(this);
@@ -846,6 +860,9 @@ public class Client extends Observable implements Runnable,
 			}
 
 			this.connected.put(peer.getHexPeerId(), peer);
+			this.retryPeers.remove(peer.hasPeerId()
+									? peer.getHexPeerId()
+									: peer.getHostIdentifier());
 			peer.register(this.torrent);
 			
 			this.statsLogger.addNewConnectedPeer(peer);
@@ -969,10 +986,16 @@ public class Client extends Observable implements Runnable,
 					this.connected.size(),
 					this.peers.size()
 				});
-			
-			if (!peer.isSeed())
-				this.reconnector.followPeer(peer);
 		}
+		
+		double peerCompletionRate = (double)peer.getAvailablePieces().cardinality() /
+									(double)this.torrent.getPieceCount();
+		if (peerCompletionRate < Double.valueOf(TIMConfigurator.getProperty("seeder_completion_rate"))) {
+			this.retryPeers.put(peer.hasPeerId()
+								? peer.getHexPeerId()
+								: peer.getHostIdentifier(), peer);
+		}
+		
 		peer.reset();
 	}
 
@@ -1050,89 +1073,6 @@ public class Client extends Observable implements Runnable,
 			this.client.stop();
 		}
 	};
-	
-	/** A special thread for reconnecting to peers. 
-	 * 
-	 */
-	private class Reconnector implements Runnable {
-
-		private Thread thread;
-		private ConcurrentMap<String, SharingPeer> retryPeers;
-		private int interval; // In seconds
-		private int retries;
-		
-		public Reconnector(int interval, int numRetries) {
-			this.interval = interval;
-			this.retries = numRetries;
-			this.retryPeers = new ConcurrentHashMap<String, SharingPeer>();
-		}
-		
-		public void start() {
-			if (this.thread == null || !this.thread.isAlive()) {
-				this.thread = new Thread(this);
-				this.thread.setName("bt-reconnector");
-				this.thread.start();
-			}
-		}
-		
-		@Override
-		public void run() {
-			
-			while (!stop) {
-				try {
-					Thread.sleep(this.interval * 1000);
-				} catch (InterruptedException e) {/* ignore */}
-				retryAllPeers();
-			}
-		}
-		
-		public int getNumOfPeers() {
-			return this.retryPeers.size();
-		}
-		
-		/**
-		 * Add peer to following list - we'll try connecting him until success.
-		 * @param peer the peer to be followed
-		 */
-		public synchronized void followPeer(SharingPeer peer) {
-			retryPeers.put(peer.hasPeerId()
-					? peer.getHexPeerId()
-					: peer.getHostIdentifier(), peer);
-		}
-		
-		private boolean tryReconnect(SharingPeer peer) {
-			int maxTries = this.retries;
-			int i = 0;
-			
-			for (i = 0; i < maxTries; i++) {
-				logger.debug("Trying to reconnect with {}. Attemp number [{}/{}].", 
-						new Object[] {peer, i+1, maxTries});
-				if (!peer.isBound() && service.connect(peer))
-					break;
-			}
-
-			String peerIdStr = peer.getPeerIdStr().substring(0, 8);
-					
-			if (i < maxTries) {
-				logger.info("Reconnect with {} is successful after {} tries. Peer ID: {}",
-						new Object[] {peer, i+1, peerIdStr});
-				return true;
-			}
-			
-			logger.warn("Reconnect with {} is unsuccessful after {} tries. Peer ID: {}",
-					new Object[] {peer, maxTries, peerIdStr});
-			return false;
-		}
-		
-		private void retryAllPeers() {
-			Iterator<Map.Entry<String, SharingPeer>> it = this.retryPeers.entrySet().iterator();
-			while (!stop &&it.hasNext()) {
-				if (tryReconnect(it.next().getValue())) {
-					it.remove();
-				}
-			}
-		}
-	}
 	
 	/** A Runnable object which is used for connecting to a given peer.
 	 * 
