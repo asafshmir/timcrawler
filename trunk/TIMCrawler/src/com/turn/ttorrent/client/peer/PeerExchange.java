@@ -66,7 +66,7 @@ class PeerExchange {
 	private static final Logger logger =
 		LoggerFactory.getLogger(PeerExchange.class);
 
-	private static final int KEEP_ALIVE_IDLE_MINUTES = 2;
+	private static final int KEEP_ALIVE_IDLE_MINUTES = 1;
 	private static final int KEEP_ALIVE_FOR_MINUTES = 3;
 
 	private SharingPeer peer;
@@ -273,7 +273,7 @@ class PeerExchange {
 				// the queue is served.
 				while (!stop || (stop && sendQueue.size() > 0)) {
 					try {
-						// Wait for two minutes for a message to send
+						// Wait for KEEP_ALIVE_IDLE_MINUTES for a message to send
 						Message message = sendQueue.poll(
 								PeerExchange.KEEP_ALIVE_IDLE_MINUTES,
 								TimeUnit.MINUTES);
