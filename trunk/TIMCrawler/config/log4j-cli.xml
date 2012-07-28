@@ -18,6 +18,5 @@
 	<root>
 		<level value="info"/>
 		<appender-ref ref="File"/>
-		<appender-ref ref="Log4jViewer"/>
 	</root>
 </log4j:configuration>
