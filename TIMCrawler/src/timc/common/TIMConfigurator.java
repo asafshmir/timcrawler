@@ -1,6 +1,5 @@
 package timc.common;
 
-import java.io.FileInputStream;
 import java.util.Properties;
 
 import org.slf4j.Logger;
@@ -21,7 +20,7 @@ public class TIMConfigurator {
 	static {
 		properties = new Properties();
 		try {
-			properties.load(new FileInputStream("config/client.properties"));
+			properties.load(TIMConfigurator.class.getResourceAsStream("/client.properties"));
 		} catch (Exception e) {
 			logger.error("Unable to load client's properties file: {}", e.getMessage());
 			e.printStackTrace();

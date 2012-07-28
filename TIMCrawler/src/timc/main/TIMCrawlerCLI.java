@@ -39,7 +39,8 @@ public class TIMCrawlerCLI {
 	 */
 	public static void main(String[] args) {
 		
-		DOMConfigurator.configure("config/log4j-cli.xml");
+		DOMConfigurator.configure(TIMCrawlerCLI.class.getResource("/log4j-cli.xml"));
+		//DOMConfigurator.configure("config/log4j-cli.xml");
 
 		if (args.length < 2) {
 			System.err.println("usage: Client <torrent> <directory>");
